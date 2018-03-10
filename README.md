@@ -2,7 +2,7 @@
 
 TODO: Brief intro here
 
-### Support formats and Examples
+### Supporting formats and Examples
 - keywords: `tsinghua.edu.cn`
 - Hosts: `23.0.0.0/8` or `59.66.131.241`
 

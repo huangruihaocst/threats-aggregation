@@ -16,7 +16,8 @@ class AggregatorTask:
     user and its task. Only the controller reads the database and find the relationship between user and tasks.
     """
 
-    def __init__(self, task_type: AggregatorTaskType, user: str, task):
+    def __init__(self, task_type: AggregatorTaskType, user: str, task, fields: list):
         self.task_type = task_type
         self.user = user
-        self.task = task
+        self.task = task  # keyword or hosts
+        self.fields = fields

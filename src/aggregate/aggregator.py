@@ -9,9 +9,25 @@ class Aggregator(ABC):
     The class only fetch data but do not deal with them.
     """
 
-    def __init__(self, tasks: list):
-        self.__tasks = tasks
+    def __init__(self):
+        self.__tasks = list()  # no task
         pass
+
+    def set_tasks(self, tasks):
+        self.__tasks = list(set(tasks))
+
+    def add_task(self, task: AggregatorTask):
+        if task not in self.__tasks:
+            self.__tasks.append(task)
+
+    def remove_task(self, task: AggregatorTask):
+        try:
+            self.__tasks.remove(task)
+        except ValueError as e:
+            print(e)
+
+    def get_tasks(self):
+        return self.__tasks
 
     def fetch_all_data(self):
         """
@@ -23,13 +39,14 @@ class Aggregator(ABC):
         """
         all_data = dict()
         for task in self.__tasks:  # type: AggregatorTask
-            all_data[task.user] = self.__fetch_data(task)
+            all_data[task.user] = self.fetch_data(task)
         return all_data
 
     @abstractmethod
-    def __fetch_data(self, task):
+    def fetch_data(self, task):
         """
-        Fetch data for a single user.
+        Fetch data for a single user. To avoid Python's name mangling, the method is public.
+        Actually, controller is not going to call this method.
         :param task: the task, type: AggregatorTask
         :return: a dict of data
         format: {result0: {field0: data0, field1: data1, ...}}
