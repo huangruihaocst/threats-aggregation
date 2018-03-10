@@ -1,21 +1,27 @@
 # Threats Aggregation and Reporting System
 
-Brief intro here
+TODO: Brief intro here
+
+### Support formats and Examples
+- keywords: `Dell`
+- Hosts: `23.0.0.0/8` or `59.66.131.241`
+
+TODO: This should be extend to support more types and more formats
 
 ## Requirements
 
-- Python 3.6.3
+- Python 3.6.0
 - Flask 0.12.2
 - Censys 0.0.8
 
 ## Installation
 
-Installation here
+TODO: Installation here
 
 ## File Structure
 
-file structure here
+TODO: file structure here
 
 ## User Interface
 
-User's Manual here
+TODO: User's Manual here
