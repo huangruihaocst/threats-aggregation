@@ -3,7 +3,7 @@
 TODO: Brief intro here
 
 ### Support formats and Examples
-- keywords: `Dell`
+- keywords: `tsinghua.edu.cn`
 - Hosts: `23.0.0.0/8` or `59.66.131.241`
 
 TODO: This should be extend to support more types and more formats

@@ -1,6 +1,7 @@
 import sys
 import json
 import requests
+from src.aggregate.aggregator import Aggregator
 import censys.certificates
 
 API_URL = "https://censys.io/api/v1"
@@ -20,3 +21,9 @@ if res.status_code != 200:
 #     print(series["name"], "was last updated at", series["latest_result"]["timestamp"])
 
 print(res.json())
+
+
+class CensysAggregator(Aggregator):
+
+    def __fetch_data(self, user):
+        pass
