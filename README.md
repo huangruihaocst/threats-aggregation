@@ -12,6 +12,7 @@ TODO: This should be extend to support more types and more formats
 
 - Python 3.6.0
 - Flask 0.12.2
+- Flask-Login 0.4.1
 - Censys 0.0.8
 
 ## Installation

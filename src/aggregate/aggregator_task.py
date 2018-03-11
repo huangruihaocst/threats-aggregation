@@ -10,10 +10,11 @@ class AggregatorTaskType(Enum):
 
 class AggregatorTask:
     """
-    Container without method.
+    Container.
     A messenger between aggregator controller and actual aggregator.
     Controller assign tasks for aggregator and aggregator does not know the actual relationship between
-    user and its task. Only the controller reads the database and find the relationship between user and tasks.
+    user and its task. Only the controller reads the database and finds the relationship between
+    users and tasks.
     """
 
     def __init__(self, task_type: AggregatorTaskType, user: str, task, fields: list):
