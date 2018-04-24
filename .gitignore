@@ -109,3 +109,6 @@ pyvenv.cfg
 # database
 .db
 /database
+
+# txt
+1.txt

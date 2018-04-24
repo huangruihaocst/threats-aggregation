@@ -29,26 +29,26 @@ class Aggregator(ABC):
     def get_tasks(self):
         return self.__tasks
 
-    def fetch_all_data(self):
+    def fetch_all(self):
         """
-        Get all the data with the specified tasks
+        Get all the data with the specified tasks.
         :return: a dict of data
-        format: {user0: {result0: {field0: data0, field1: data1, ...}, result1: ...}, user1: ...}
+        format: {query0: [{field0: data0, field1: data1, ...}, {...}], query1: ...}
         The dealing of this data should be done by the controller file (controller.py), such as saving to
         database, or doing some further analysis
         """
         all_data = dict()
         for task in self.__tasks:  # type: AggregatorTask
-            all_data[task.user] = self.fetch_data(task)
+            all_data[task.query] = self.fetch_data(task)
         return all_data
 
     @abstractmethod
     def fetch_data(self, task):
         """
-        Fetch data for a single user. To avoid Python's name mangling, the method is public.
+        Fetch data for a single task. To avoid Python's name mangling, the method is public.
         Actually, controller is not going to call this method.
         :param task: the task, type: AggregatorTask
-        :return: a dict of data
-        format: {result0: {field0: data0, field1: data1, ...}}
+        :return: a list of data
+        format: [{field0: data0, field1: data1, ...}, {...}]
         """
         pass

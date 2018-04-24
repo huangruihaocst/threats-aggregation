@@ -1,8 +1,9 @@
-from src.aggregate.censys import CensysAggregator
+from src.aggregate.censys_aggregator import CensysAggregator
 from src.aggregate.aggregator_task import AggregatorTaskType, AggregatorTask
 
 
 class AggregatorController:
+    # Control the process
 
     def __init__(self):
         pass
@@ -20,13 +21,16 @@ class AggregatorController:
         The actual aggregation.
         :return: None
         """
+        # step 1: read tasks from sqlite database, get the queries
+        tasks = list()
+        # step 2: use aggregators to fetch data from the Internet and save them to MongoDB
+        censys_aggregator = CensysAggregator()
+        censys_aggregator.set_tasks(tasks)
+
+        # step 3: find the difference between the old data and the new data and return this value to its caller
+
         pass
 
 
 if __name__ == '__main__':
-    fields = ["ip", "protocols", "location.country"]
-    task1 = AggregatorTask(AggregatorTaskType.keyword, 'hrh14', 'tsinghua.edu.cn', fields)
-    # task2 = AggregatorTask(AggregatorTaskType.hosts, 'huangruihao', '23.0.0.0/8', fields)
-    censys_aggregator = CensysAggregator()
-    censys_aggregator.set_tasks([task1])
-    print(censys_aggregator.fetch_all_data())
+    pass

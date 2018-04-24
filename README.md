@@ -14,6 +14,11 @@ TODO: This should be extend to support more types and more formats
 - Flask 0.12.2
 - Flask-Login 0.4.1
 - Censys 0.0.8
+- Shodan 1.7.1
+- zoomeye-sdk 1.0.0
+- Sqlite 3.19.3
+- MongoDB 3.6.0
+- pymongo 3.6.1
 
 ## Installation
 
