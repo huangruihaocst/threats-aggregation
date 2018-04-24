@@ -35,7 +35,7 @@ class ShodanAggregator(Aggregator):
         """
         api = shodan.Shodan(API_KEY)
         try:
-            if task.task_type == AggregatorTaskType.keyword or AggregatorTaskType.ip:
+            if task.task_type == AggregatorTaskType.hostname or AggregatorTaskType.ip:
                 res = api.search(task.query, page=page_num)
             elif task.task_type == AggregatorTaskType.net:
                 res = api.search('net:' + task.query, page=page_num)

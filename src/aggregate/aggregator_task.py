@@ -4,7 +4,7 @@ from enum import Enum
 class AggregatorTaskType(Enum):
     auto = -1
     error = 0
-    keyword = 1  # example: 'tsinghua.edu.cn'
+    hostname = 1  # example: 'tsinghua.edu.cn'
     net = 2  # example: '166.111.0.0/16' (CIDR)
     ip = 3  # example: 166.111.14.196
 
