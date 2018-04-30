@@ -13,11 +13,10 @@ class ShodanAggregator(Aggregator):
         if len(first_page_res) != 0:
             all_data = first_page_res['matches']
             if first_page_res['total'] > PAGE_MAX:
-                # pages = int(first_page_res['total'] / PAGE_MAX) + 1
-                # for page_num in range(2, pages + 1):
-                #     res = self.__fetch_page(task, page_num)
-                #     all_data += res['matches']
-                # TODO: check the code here (if total > 100)
+                pages = int(first_page_res['total'] / PAGE_MAX) + 1
+                for page_num in range(2, pages + 1):
+                    res = self.__fetch_page(task, page_num)
+                    all_data += res['matches']
                 pass
             for data in all_data:
                 data['source'] = 'Shodan'
@@ -35,7 +34,7 @@ class ShodanAggregator(Aggregator):
         """
         api = shodan.Shodan(API_KEY)
         try:
-            if task.task_type == AggregatorTaskType.hostname or AggregatorTaskType.ip:
+            if task.task_type == AggregatorTaskType.hostname or task.task_type == AggregatorTaskType.ip:
                 res = api.search(task.query, page=page_num)
             elif task.task_type == AggregatorTaskType.net:
                 res = api.search('net:' + task.query, page=page_num)
@@ -49,7 +48,7 @@ class ShodanAggregator(Aggregator):
 if __name__ == '__main__':
     import json
     aggregator = ShodanAggregator()
-    _task = AggregatorTask('166.111.14.196', AggregatorTaskType.ip)
+    _task = AggregatorTask('166.111.0.0/19', AggregatorTaskType.net)
     aggregator.add_task(_task)
     with open('1.txt', 'w') as f:
         f.write(json.dumps(aggregator.fetch_all()))
