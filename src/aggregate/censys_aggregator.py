@@ -45,7 +45,7 @@ class CensysAggregator(Aggregator):
 
 if __name__ == '__main__':
     censys = CensysAggregator()
-    _task = AggregatorTask(AggregatorTaskType.hostname, 'tsinghua.edu.cn')
+    _task = AggregatorTask('tsinghua.edu.cn', AggregatorTaskType.hostname)
     censys.add_task(_task)
     print(censys.fetch_all())
 
