@@ -12,12 +12,10 @@ class ShodanAggregator(Aggregator):
         first_page_res = self.__fetch_page(task, 1)
         if len(first_page_res) != 0:
             all_data = first_page_res['matches']
-            if first_page_res['total'] > PAGE_MAX:
-                pages = int(first_page_res['total'] / PAGE_MAX) + 1
-                for page_num in range(2, pages + 1):
-                    res = self.__fetch_page(task, page_num)
-                    all_data += res['matches']
-                pass
+            pages = int(first_page_res['total'] / PAGE_MAX) + 1 if first_page_res['total'] % PAGE_MAX != 0 else 0
+            for page_num in range(2, pages + 1):
+                res = self.__fetch_page(task, page_num)
+                all_data += res['matches']
             for data in all_data:
                 data['source'] = 'Shodan'
             return all_data

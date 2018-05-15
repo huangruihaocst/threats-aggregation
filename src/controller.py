@@ -3,7 +3,9 @@ from src.aggregate.aggregator_task import AggregatorTaskType, AggregatorTask
 
 
 class AggregatorController:
-    # Control the process
+    """
+    The class controls the process of aggregating threats and details of CVEs.
+    """
 
     def __init__(self):
         pass
@@ -11,24 +13,34 @@ class AggregatorController:
     def start_aggregate(self):
         """
         Start aggregation. The actual aggregation is done once in a well (maybe once a day).
+        The thorough CVE details aggregator is called in a much longer cycle (maybe once a week).
         It must be run in a different thread.
         :return: None
         """
         pass
 
-    def aggregate(self):
+    @staticmethod
+    def aggregate_threats():
         """
-        The actual aggregation.
+        Aggregate threats from Censys, Shodan and ZoomEye.
         :return: None
         """
-        # step 1: read tasks from sqlite database, get the queries
+        # step 1: read tasks from file, get the queries
         tasks = list()
-        # step 2: use aggregators to fetch data from the Internet and save them to MongoDB
+        # step 2: use aggregators to fetch data from the Internet
         censys_aggregator = CensysAggregator()
         censys_aggregator.set_tasks(tasks)
 
-        # step 3: find the difference between the old data and the new data and return this value to its caller
+        # step 3: save them into database
 
+        pass
+
+    @staticmethod
+    def aggregate_cve_details():
+        """
+        Aggregate threats from www.cvedetails.com. Incremental Update.
+        :return: None
+        """
         pass
 
 

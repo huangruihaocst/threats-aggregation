@@ -18,6 +18,7 @@ TODO: This should be extend to support more types and more formats
 - Sqlite 3.19.3
 - MongoDB 3.6.0
 - pymongo 3.6.1
+- BeautifulSoup 4.6.0
 
 ## Installation
 
