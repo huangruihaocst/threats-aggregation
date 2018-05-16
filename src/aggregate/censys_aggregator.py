@@ -30,8 +30,7 @@ class CensysAggregator(Aggregator):
         :param page_num: the number of the page, one indexed
         :return: raw data for the result (with metadata)
         """
-        fields = ['ip', 'protocols', 'location.country', 'location.province', 'location.city', 'metadata.os',
-                  'metadata.os_version', 'tags']
+        fields = ['ip', 'protocols', 'metadata.os', 'metadata.os_version', 'tags']
         data = {"query": task.query,
                 "page": page_num,
                 "fields": fields}
@@ -42,10 +41,24 @@ class CensysAggregator(Aggregator):
         else:
             return res.json()
 
+    @staticmethod
+    def get_info_by_ip(ip):
+        fields = ['ip', 'protocols', 'metadata.os', 'metadata.os_version', 'tags']
+        data = {"query": ip,
+                "page": 1,
+                "fields": fields}
+        res = requests.post(API_URL + "/search/ipv4", data=json.dumps(data), auth=(UID, SECRET))
+        if res.status_code != 200:
+            print("error occurred: %s" % res.json()["error"])
+            sys.exit(1)
+        else:
+            return res.json()
+
 
 if __name__ == '__main__':
-    censys = CensysAggregator()
-    _task = AggregatorTask('tsinghua.edu.cn', AggregatorTaskType.hostname)
-    censys.add_task(_task)
-    print(censys.fetch_all())
+    # censys = CensysAggregator()
+    # _task = AggregatorTask('tsinghua.edu.cn', AggregatorTaskType.hostname)
+    # censys.add_task(_task)
+    # print(censys.fetch_all())
+    print(CensysAggregator.get_info_by_ip('166.111.4.40'))
 

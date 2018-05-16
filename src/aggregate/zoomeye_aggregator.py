@@ -34,15 +34,16 @@ class ZoomEyeAggregator(Aggregator):
             data['resource'] = 'ZoomEye'
         return all_data
 
-    def __fetch_page(self, task: AggregatorTask, page_num):
+    @staticmethod
+    def __fetch_page(task: AggregatorTask, page_num):
         """
         Fetch data on a single page
         :param task: AggregatorTask
         :param page_num: the number of the page, one indexed
         :return: raw data for the result (with metadata)
         """
-        token = self.__get_token()
-        res = requests.get(API_URL + '/host/search', params=(('query', task.query), ('page', page_num)),
+        token = ZoomEyeAggregator.__get_token()
+        res = requests.get(API_URL + '/web/search', params=(('query', task.query), ('page', page_num)),
                            headers={'Authorization': 'JWT ' + token})
         if res.status_code != 200:
             print("error occurred: %s" % res.json()["error"])
@@ -50,13 +51,28 @@ class ZoomEyeAggregator(Aggregator):
         else:
             return res.json()
 
+    @staticmethod
+    def get_apps(ip):
+        token = ZoomEyeAggregator.__get_token()
+        res = requests.get(API_URL + '/web/search', params=(('query', ip), ('page', 1)),
+                           headers={'Authorization': 'JWT ' + token})
+        if res.status_code != 200:
+            print("error occurred: %s" % res.json()["error"])
+            sys.exit(1)
+        else:
+            if res.json()['total'] == 0:
+                return list()
+            else:
+                return res.json()['matches'][0]
+
 
 if __name__ == '__main__':
     import json
 
     aggregator = ZoomEyeAggregator()
-    _task = AggregatorTask('166.111.0.0/19', AggregatorTaskType.net)
+    _task = AggregatorTask('tsinghua.edu.cn', AggregatorTaskType.hostname)
     aggregator.add_task(_task)
-    # print(json.dumps(aggregator.fetch_all()))
-    with open('1.txt', 'w') as f:
-        f.write(json.dumps(aggregator.fetch_all()))
+    print(json.dumps(aggregator.fetch_all()))
+    # with open('1.txt', 'w') as f:
+    #     f.write(json.dumps(aggregator.fetch_all()))
+    # print(json.dumps(aggregator.get_apps('166.111.4.98')))

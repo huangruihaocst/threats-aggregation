@@ -56,6 +56,21 @@ class CVEAggregator:
         res = re.findall(r'Name: (CVE-\d{4}-\d{4})', txt)
         return list(set(res))
 
+    def get_cve_by_years(self, years: list):
+        """
+        Get the name of all the CVEs within the specified years.
+        :param years: a list of years.
+        :return: a list of CVE names.
+        """
+        all_cve = self.get_all_cve()
+        res_cve = list()
+        for cve in all_cve:
+            year = cve.split('-')[1]
+            if int(year) in years:
+                res_cve.append(cve)
+        print(len(res_cve))
+        return res_cve
+
     @staticmethod
     def __get_app(soup):
         if 'Unknown CVE ID' in soup.text:  # illegal CVE ID
@@ -92,5 +107,7 @@ class CVEAggregator:
 if __name__ == '__main__':
     import json
     aggregator = CVEAggregator()
-    aggregator.set_tasks(['CVE-2018-0171', 'CVE-2007-6372', 'CVE-2018-1000179', 'CVE-2007-1833'])
-    print(json.dumps(aggregator.update_tasks()))
+    # aggregator.set_tasks(['CVE-2018-0171', 'CVE-2007-6372', 'CVE-2018-1000179', 'CVE-2007-1833'])
+    # print(json.dumps(aggregator.update_tasks()))
+    with open('1.txt', 'w') as f:
+        f.write(json.dumps(aggregator.get_cve_by_years([2018, 2017, 2016])))
