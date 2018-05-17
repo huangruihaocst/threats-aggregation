@@ -52,7 +52,10 @@ class CensysAggregator(Aggregator):
             print("error occurred: %s" % res.json()["error"])
             sys.exit(1)
         else:
-            return res.json()
+            if len(res.json()['results']) == 0:
+                return dict()
+            else:  # no redundant
+                return res.json()['results'][0]
 
 
 if __name__ == '__main__':

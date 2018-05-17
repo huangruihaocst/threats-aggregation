@@ -9,18 +9,39 @@ class MongoHelper:
     def __init__(self):
         pass
 
-    def save_all_res(self, all_res):
+    def save_threats(self, threats):
         """
-        Save the result for tasks for all the users into database.
-        :param all_res: the result for tasks for all the users into database.
-        The return value of Aggregator.fetch_all_data().
-        :return: the change of the data. The difference between the data newly fetched and
-        the old data from the database.
-        Format: {user0: changes0, user1: changes1, ...}
+        Save the merged threats data into database.
+        :param threats: the merged data.
+        Format: {query0: [{field0: data0, field1: data1, ...}, {...}], query1: ...}
+        :return: None
         """
         pass
 
-    def __save_user_res(self, user_res):
+    def read_threat_by_ip(self, ip):
+        """
+        Read threat data of a host by its ip address.
+        :param ip: ip address.
+        :return: a dict of its information. Empty dict if the ip address does not exist.
+        """
+        pass
+
+    def save_cve(self, cves: list):
+        """
+        Save CVE details into database.
+        :param cves: a list of cve data.
+        Format: {'cve0': {'port': [port0, port1, ...], 'apps': [{'Type': Type, 'Vendor': Vendor, 'Product': Product,
+         'Version': Version}, ...]}, 'cve1': ...}
+        :return: None
+        """
+        pass
+
+    def read_cve_by_name(self, cve):
+        """
+        Read CVE data including port and apps information by its name.
+        :param cve: the name of the CVE.
+        :return: a dict of its information. Empty if the CVE does not exist.
+        """
         pass
 
 

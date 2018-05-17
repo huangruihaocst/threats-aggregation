@@ -11,37 +11,37 @@ class CVEAggregator:
     """
 
     def __init__(self):
-        self.__tasks = list()  # no tasks, public attribute
+        self.__cves = list()  # no CVEs, public attribute
 
-    def set_tasks(self, tasks):
-        self.__tasks = tasks
+    def set_cves(self, cves):
+        self.__cves = cves
 
-    def clear_tasks(self):
-        self.__tasks = list()
+    def clear_cves(self):
+        self.__cves = list()
 
     def update_all(self):
         """
         Update all the CVEs.
-        :return:
+        :return: the information of all CVEs.
         """
         all_cve = self.get_all_cve()
-        self.__tasks = all_cve
-        return self.update_tasks()
+        self.__cves = all_cve
+        return self.update_cves()
 
-    def update_tasks(self):
+    def update_cves(self):
         """
         Update the CVEs in the task_list.
         :return: A dict of tasks.
-        Format: {'task0': {'port': [port0, port1, ...], 'apps': [{'Type': Type, 'Vendor': Vendor, 'Product': Product,
-         'Version': Version}, ...]}, 'task1': ...}
+        Format: {'cve0': {'port': [port0, port1, ...], 'apps': [{'Type': Type, 'Vendor': Vendor, 'Product': Product,
+         'Version': Version}, ...]}, 'cve1': ...}
         """
         all_data = dict()
-        for task in self.__tasks:
+        for task in self.__cves:
             data = dict()
             html = requests.get(CVE_DETAILS_URL + '/' + task).text
             soup = BeautifulSoup(html, 'html.parser')
-            data['port'] = self.__get_ports(soup)
-            data['apps'] = self.__get_app(soup)
+            data['port'] = CVEAggregator.__get_ports(soup)
+            data['apps'] = CVEAggregator.__get_apps(soup)
             all_data[task] = data
         return all_data
 
@@ -56,13 +56,14 @@ class CVEAggregator:
         res = re.findall(r'Name: (CVE-\d{4}-\d{4})', txt)
         return list(set(res))
 
-    def get_cve_by_years(self, years: list):
+    @staticmethod
+    def get_cve_by_years(years: list):
         """
         Get the name of all the CVEs within the specified years.
         :param years: a list of years.
         :return: a list of CVE names.
         """
-        all_cve = self.get_all_cve()
+        all_cve = CVEAggregator.get_all_cve()
         res_cve = list()
         for cve in all_cve:
             year = cve.split('-')[1]
@@ -72,7 +73,7 @@ class CVEAggregator:
         return res_cve
 
     @staticmethod
-    def __get_app(soup):
+    def __get_apps(soup):
         if 'Unknown CVE ID' in soup.text:  # illegal CVE ID
             return None
         else:

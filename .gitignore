@@ -111,5 +111,4 @@ pyvenv.cfg
 /database
 
 # txt
-1.txt
-2.txt
+*.txt

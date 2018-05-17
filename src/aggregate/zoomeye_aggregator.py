@@ -31,7 +31,7 @@ class ZoomEyeAggregator(Aggregator):
             res = self.__fetch_page(task, page_num)
             all_data += res['matches']
         for data in all_data:
-            data['resource'] = 'ZoomEye'
+            data['source'] = 'ZoomEye'
         return all_data
 
     @staticmethod
@@ -52,7 +52,7 @@ class ZoomEyeAggregator(Aggregator):
             return res.json()
 
     @staticmethod
-    def get_apps(ip):
+    def get_info_by_ip(ip):
         token = ZoomEyeAggregator.__get_token()
         res = requests.get(API_URL + '/web/search', params=(('query', ip), ('page', 1)),
                            headers={'Authorization': 'JWT ' + token})
@@ -60,10 +60,29 @@ class ZoomEyeAggregator(Aggregator):
             print("error occurred: %s" % res.json()["error"])
             sys.exit(1)
         else:
-            if res.json()['total'] == 0:
-                return list()
-            else:
+            if res.json()['available'] == 0:
+                return dict()
+            elif res.json()['available'] == 1:
                 return res.json()['matches'][0]
+            else:
+                return ZoomEyeAggregator.get_latest(res.json()['matches'])
+
+    @staticmethod
+    def get_latest(res: list):
+        """
+        Get the latest information of an ip address among multiple ZoomEye search results.
+        :param res: a list of ZoomEye search results.
+        :return: the latest information.
+        """
+        latest = res[0]
+        from datetime import datetime
+        fmt = '%Y-%m-%dT%H:%M:%S.%f'
+        t = datetime.strptime(latest['timestamp'], fmt)
+        for info in res:
+            if datetime.strptime(info['timestamp'], fmt) > t:
+                latest = info
+                t = datetime.strptime(latest['timestamp'], fmt)
+        return latest
 
 
 if __name__ == '__main__':

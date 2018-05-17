@@ -66,8 +66,8 @@ class ShodanAggregator(Aggregator):
     @staticmethod
     def get_latest(res: list):
         """
-        Get the latest information of an ip address among multiple shodan search results.
-        :param res: a list of shodan search results.
+        Get the latest information of an ip address among multiple Shodan search results.
+        :param res: a list of Shodan search results.
         :return: the latest information.
         """
         latest = res[0]
@@ -88,4 +88,4 @@ if __name__ == '__main__':
     # aggregator.add_task(_task)
     # with open('1.txt', 'w') as f:
     #     f.write(json.dumps(aggregator.fetch_all()))
-    print(json.dumps(ShodanAggregator.get_info_by_ip('106.120.133.38')))
+    print(json.dumps(ShodanAggregator.get_info_by_ip('203.91.120.151')))
