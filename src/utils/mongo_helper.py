@@ -3,6 +3,10 @@ from pymongo import MongoClient
 DATABASE_HOST = '127.0.0.1'
 DATABASE_PORT = 27017
 
+DB_NAME = 'threats_db'
+HOSTS_COLLECTION = 'hosts_collection'
+CVES_COLLECTION = 'cves_collection'
+
 
 class MongoHelper:
 
@@ -26,15 +30,21 @@ class MongoHelper:
         """
         pass
 
-    def save_cve(self, cves: list):
+    @staticmethod
+    def save_cves(cves: list):
         """
         Save CVE details into database.
         :param cves: a list of cve data.
-        Format: {'cve0': {'port': [port0, port1, ...], 'apps': [{'Type': Type, 'Vendor': Vendor, 'Product': Product,
-         'Version': Version}, ...]}, 'cve1': ...}
+        Format: {[{'name': name0, 'port': [port0, port1, ...], 'apps': [{'Type': Type, 'Vendor': Vendor,
+        'Product': Product, 'Version': Version}, ...]}, {...}, ...]
         :return: None
         """
-        pass
+        client = MongoClient(DATABASE_HOST, DATABASE_PORT)
+        db = client[DB_NAME]
+        collection = db[CVES_COLLECTION]
+        # format: [{'name': name0, 'ports': [port0, ...], 'apps': [...]}, {...}]
+        collection.insert_many(cves)
+        client.close()
 
     def read_cve_by_name(self, cve):
         """
@@ -46,13 +56,5 @@ class MongoHelper:
 
 
 if __name__ == '__main__':
-    client = MongoClient(DATABASE_HOST, DATABASE_PORT)
-    db = client['myDb']
-    collection = db['hostsCollection']
-    host = {'ip': '127.0.0.1', 'country': 'China', 'protocol': ['80/http', '443/https']}
-    collection.insert_one(host)
-    host = {'ip': '8.8.8.8', 'country': 'America', 'protocol': ['25/smtp']}
-    collection.insert_one(host)
-    print(collection.find_one({'ip': '127.0.0.1'}))
-    client.close()
+    pass
 

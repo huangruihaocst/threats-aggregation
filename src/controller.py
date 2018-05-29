@@ -4,6 +4,10 @@ from src.aggregate.zoomeye_aggregator import ZoomEyeAggregator
 from src.cve_details.cve_details_aggregator import CVEAggregator
 from src.aggregate.aggregator_task import AggregatorTaskType, AggregatorTask
 from src.utils.mongo_helper import MongoHelper
+from threading import Thread, Lock, current_thread
+
+CVE_BUFFER_SIZE = 100
+THREADS = 8
 
 
 class AggregatorController:
@@ -44,16 +48,16 @@ class AggregatorController:
         # TODO: read from file
         tasks = [AggregatorTask('tsinghua.edu.cn', AggregatorTaskType.hostname)]
         # step 2: initialize task list for aggregator
-        censys = CensysAggregator()
-        censys.set_tasks(tasks)
-        shodan = ShodanAggregator()
-        shodan.set_tasks(tasks)
-        zoom_eye = ZoomEyeAggregator()
-        zoom_eye.set_tasks(tasks)
+        censys_aggregator = CensysAggregator()
+        censys_aggregator.set_tasks(tasks)
+        shodan_aggregator = ShodanAggregator()
+        shodan_aggregator.set_tasks(tasks)
+        zoom_eye_aggregator = ZoomEyeAggregator()
+        zoom_eye_aggregator.set_tasks(tasks)
         # step 3: fetch all
-        censys_res = censys.fetch_all()
-        shodan_res = shodan.fetch_all()
-        zoom_eye_res = zoom_eye.fetch_all()
+        censys_res = censys_aggregator.fetch_all()
+        shodan_res = shodan_aggregator.fetch_all()
+        zoom_eye_res = zoom_eye_aggregator.fetch_all()
         # step 4: merge
         # merged_res = self.merge(censys_res, shodan_res, zoom_eye_res)
         merged_res = AggregatorController.fake_merge(censys_res, shodan_res, zoom_eye_res)
@@ -174,19 +178,50 @@ class AggregatorController:
         """
         # step 1: read CVE range from file and find the difference between data in the local database and the Internet
         # And then initialize the aggregation task
-        cve = CVEAggregator()
         # TODO: read from file and database
-        cves = CVEAggregator.get_cve_by_years([1999])
-        cve.set_cves(cves)
-        # step 2: start aggregation
-        res = cve.update_cves()
-        # step 3: save to database
-        return res
+        # cves = CVEAggregator.get_cve_by_years([2018])
+        import json
+        with open('cve_details/1.txt', 'r') as f:
+            cves = json.loads(f.read())
+        print('total: ' + str(len(cves)))
+        # step 2: start aggregation (multi-threaded)
+        done = 0
+        lock = Lock()
+
+        def get_aggregator():
+            nonlocal cves, done
+            while len(cves) > 0:
+                lock.acquire()
+                try:
+                    current, cves = cves[:CVE_BUFFER_SIZE], cves[CVE_BUFFER_SIZE:]
+                finally:
+                    lock.release()
+                cve_aggregator = CVEAggregator()
+                cve_aggregator.set_cves(current)
+                res = cve_aggregator.update_cves()
+                # step 3: save to database
+                mongo = MongoHelper()
+                mongo.save_cves(res)
+                lock.acquire()
+                try:
+                    done += len(current)
+                    print(current_thread().name + ' ' + str(done) + ' done.')
+                finally:
+                    lock.release()
+
+        workers = list()
+        for i in range(0, THREADS):
+            worker = Thread(target=get_aggregator)
+            worker.start()
+            workers.append(worker)
+        for worker in workers:
+            worker.join()
 
 
 if __name__ == '__main__':
     import json
     controller = AggregatorController()
+    controller.aggregate_cve_details()
     # with open('1.txt', 'r') as f:
     #     nested_json = f.read()
     #     # print(json.dumps(controller.merge_from_json(nested_json)))
@@ -194,5 +229,5 @@ if __name__ == '__main__':
     #         f2.write(json.dumps(controller.merge_from_json(nested_json)))
     # with open('1.txt', 'w') as f:
     #     f.write(json.dumps(controller.aggregate_threats()))
-    with open('3.txt', 'w') as f:
-        f.write(json.dumps(AggregatorController.aggregate_cve_details()))
+    # with open('3.txt', 'w') as f:
+    #     f.write(json.dumps(AggregatorController.aggregate_cve_details()))
