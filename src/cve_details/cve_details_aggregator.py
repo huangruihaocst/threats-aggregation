@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+import re
 
 ALL_CVE_URL = 'http://cve.mitre.org/data/downloads/allitems.txt'
 CVE_DETAILS_URL = 'https://www.cvedetails.com/cve'
@@ -39,10 +40,11 @@ class CVEAggregator:
         for cve in self.__cves:
             data = dict()
             html = requests.get(CVE_DETAILS_URL + '/' + cve).text
+            html = re.sub(r'&#([^\d]+)', r'\1', html)
             soup = BeautifulSoup(html, 'html.parser')
             data['name'] = cve
-            data['port'] = CVEAggregator.__get_ports(soup, html, '&#039;' not in html)
-            data['apps'] = CVEAggregator.__get_apps(soup, html, '&#039;' not in html)
+            data['port'] = CVEAggregator.__get_ports(soup)
+            data['apps'] = CVEAggregator.__get_apps(soup)
             all_data.append(data)
         return all_data
 
@@ -53,7 +55,6 @@ class CVEAggregator:
         :return: a list of CVE names.
         """
         txt = requests.get(ALL_CVE_URL).text
-        import re
         res = re.findall(r'Name: (CVE-\d{4}-\d{4})', txt)
         return list(set(res))
 
@@ -73,59 +74,45 @@ class CVEAggregator:
         return res_cve
 
     @staticmethod
-    def __get_apps(soup, html, use_bs):
-        if use_bs:
-            if 'Unknown CVE ID' in soup.text:  # illegal CVE ID
-                return list()
-            else:
-                apps_table = soup.find('table', id='vulnprodstable')
-        else:
-            import re
-            apps_table = re.findall(r'<table class="listtable" id="vulnprodstable">.*?</table>', html, re.S)[0]
-            apps_table = BeautifulSoup(apps_table, 'html.parser')
-        if apps_table is not None:
-            if 'No vulnerable product found.' in apps_table.text:
-                return list()
-            else:
-                trs = apps_table.find_all('tr')
-                apps = list()
-                for i in range(1, len(trs)):  # the first line is header
-                    tds = trs[i].find_all('td')
-                    app = dict()
-                    app['Type'] = tds[1].text.strip()
-                    app['Vendor'] = tds[2].find('a').text.strip()
-                    app['Product'] = tds[3].find('a').text.strip()
-                    app['Version'] = tds[4].text.strip()
-                    apps.append(app)
-                return apps
-        else:
+    def __get_apps(soup):
+        if 'Unknown CVE ID' in soup.text:  # illegal CVE ID
             return list()
-
+        else:
+            apps_table = soup.find('table', id='vulnprodstable')
+            if apps_table is not None:
+                if 'No vulnerable product found.' in apps_table.text:
+                    return list()
+                else:
+                    trs = apps_table.find_all('tr')
+                    apps = list()
+                    for i in range(1, len(trs)):  # the first line is header
+                        tds = trs[i].find_all('td')
+                        app = dict()
+                        app['Type'] = tds[1].text.strip()
+                        app['Vendor'] = tds[2].find('a').text.strip()
+                        app['Product'] = tds[3].find('a').text.strip()
+                        app['Version'] = tds[4].text.strip()
+                        apps.append(app)
+                    return apps
+            else:
+                return list()
 
     @staticmethod
-    def __get_ports(soup, html, use_bs):
+    def __get_ports(soup):
         """
         Get the vulnerable ports of the CVE.
         :param soup: BeautifulSoup Object
-        :param html: the original html
-        :param use_bs: if use BeautifulSoup. If the original html contains special chars, Beautiful cannot parse it
         :return: a list of ports
         """
-        if use_bs:
-            if 'Unknown CVE ID' in soup.text:  # illegal CVE ID
-                return list()
-            else:
-                import re
-                summary = soup.find('div', class_='cvedetailssummary').text
+        if 'Unknown CVE ID' in soup.text:  # illegal CVE ID
+            return list()
         else:
-            import re
-            summary = re.findall(r'<div class="cvedetailssummary">.*?</div>', html, re.S)[0]
-            summary = BeautifulSoup(summary, 'html.parser').text
-        ports = re.findall(r'port (\d*)', summary)
-        ports += re.findall(r'port \((\d*)\)', summary)
-        ports += re.findall(r'(\d*)/tcp', summary)
-        ports = list(filter(None, ports))  # remove empty strings
-        return list(map(int, ports))
+            summary = soup.find('div', class_='cvedetailssummary').text
+            ports = re.findall(r'port (\d*)', summary)
+            ports += re.findall(r'port \((\d*)\)', summary)
+            ports += re.findall(r'(\d*)/tcp', summary)
+            ports = list(filter(None, ports))  # remove empty strings
+            return list(map(int, ports))
 
 
 if __name__ == '__main__':
@@ -135,5 +122,5 @@ if __name__ == '__main__':
     # print(json.dumps(aggregator.update_tasks()))
     # with open('1.txt', 'w') as f:
     #     f.write(json.dumps(aggregator.get_cve_by_years([1999])))
-    aggregator.set_cves(['CVE-1999-1343'])
+    aggregator.set_cves(['CVE-1999-1342'])
     print(json.dumps(aggregator.update_cves()))

@@ -6,6 +6,7 @@ DATABASE_PORT = 27017
 DB_NAME = 'threats_db'
 HOSTS_COLLECTION = 'hosts_collection'
 CVES_COLLECTION = 'cves_collection'
+THREATS_COLLECTION = 'threats_collection'
 
 
 class MongoHelper:
@@ -13,13 +14,20 @@ class MongoHelper:
     def __init__(self):
         pass
 
-    def save_threats(self, threats):
+    @staticmethod
+    def save_threats(threats):
         """
         Save the merged threats data into database.
         :param threats: the merged data.
         Format: {query0: [{field0: data0, field1: data1, ...}, {...}], query1: ...}
         :return: None
         """
+        client = MongoClient(DATABASE_HOST, DATABASE_PORT)
+        db = client[DB_NAME]
+        collection = db[THREATS_COLLECTION]
+
+        collection.insert_many(threats)
+        client.close()
         pass
 
     def read_threat_by_ip(self, ip):

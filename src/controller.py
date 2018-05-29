@@ -200,8 +200,7 @@ class AggregatorController:
                 cve_aggregator.set_cves(current)
                 res = cve_aggregator.update_cves()
                 # step 3: save to database
-                mongo = MongoHelper()
-                mongo.save_cves(res)
+                MongoHelper.save_cves(res)
                 lock.acquire()
                 try:
                     done += len(current)
