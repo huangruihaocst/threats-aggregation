@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 
-DATABASE_HOST = '127.0.0.1'
-DATABASE_PORT = 27017
+DB_HOST = '127.0.0.1'
+DB_PORT = 27017
 
 DB_NAME = 'threats_db'
 HOSTS_COLLECTION = 'hosts_collection'
@@ -15,20 +15,25 @@ class MongoHelper:
         pass
 
     @staticmethod
-    def save_threats(threats):
+    def save_hosts(hosts):
         """
-        Save the merged threats data into database.
-        :param threats: the merged data.
+        Save the merged hosts data into database.
+        :param hosts: the merged data.
         Format: {query0: [{field0: data0, field1: data1, ...}, {...}], query1: ...}
         :return: None
         """
-        client = MongoClient(DATABASE_HOST, DATABASE_PORT)
+        client = MongoClient(DB_HOST, DB_PORT)
         db = client[DB_NAME]
-        collection = db[THREATS_COLLECTION]
-
-        collection.insert_many(threats)
+        collection = db[HOSTS_COLLECTION]
+        # change format to: [{'query': query0, field0: data0, ...}, {...}]
+        # Important: did not merge same hosts from different queries
+        reformatted_hosts = list()
+        for query in hosts:
+            for host in hosts[query]:
+                host['query'] = query
+                reformatted_hosts.append(host)
+        collection.insert_many(reformatted_hosts)
         client.close()
-        pass
 
     def read_threat_by_ip(self, ip):
         """
@@ -43,26 +48,38 @@ class MongoHelper:
         """
         Save CVE details into database.
         :param cves: a list of cve data.
-        Format: {[{'name': name0, 'port': [port0, port1, ...], 'apps': [{'Type': Type, 'Vendor': Vendor,
+        Format: [{'name': name0, 'port': [port0, port1, ...], 'apps': [{'Type': Type, 'Vendor': Vendor,
         'Product': Product, 'Version': Version}, ...]}, {...}, ...]
         :return: None
         """
-        client = MongoClient(DATABASE_HOST, DATABASE_PORT)
+        client = MongoClient(DB_HOST, DB_PORT)
         db = client[DB_NAME]
         collection = db[CVES_COLLECTION]
         # format: [{'name': name0, 'ports': [port0, ...], 'apps': [...]}, {...}]
         collection.insert_many(cves)
         client.close()
 
-    def read_cve_by_name(self, cve):
+    @staticmethod
+    def read_cve_by_year(year):
         """
-        Read CVE data including port and apps information by its name.
-        :param cve: the name of the CVE.
-        :return: a dict of its information. Empty if the CVE does not exist.
+        Read CVE data including port and apps information by its year.
+        :param year: the year.
+        :return: an iterable mongodb cursor
+        Format: [{'_id': ObjectId0, 'name': name0, 'ports': [...], 'apps': [...]}, {...}]
         """
-        pass
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[CVES_COLLECTION]
+        import re
+        regex = re.compile('CVE-' + str(year) + '-\d{4}')
+        res = collection.find({'name': regex})
+        client.close()
+        return res
 
 
 if __name__ == '__main__':
+    # res = MongoHelper.read_cve_by_year(1999)
+    # for r in res:
+    #     print(r['name'])
+    # print(res.count())
     pass
-

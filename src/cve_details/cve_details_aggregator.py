@@ -43,8 +43,16 @@ class CVEAggregator:
             html = re.sub(r'&#([^\d]+)', r'\1', html)
             soup = BeautifulSoup(html, 'html.parser')
             data['name'] = cve
-            data['port'] = CVEAggregator.__get_ports(soup)
-            data['apps'] = CVEAggregator.__get_apps(soup)
+            if 'Unknown CVE ID' in soup.text:  # illegal CVE ID
+                data['ports'] = list()
+                data['apps'] = list()
+                data['cvss'] = None
+                data['summary'] = None
+            else:
+                data['ports'] = CVEAggregator.__get_ports(soup)
+                data['apps'] = CVEAggregator.__get_apps(soup)
+                data['cvss'] = CVEAggregator.__get_cvss(soup)
+                data['summary'] = CVEAggregator.__get_summary(soup)
             all_data.append(data)
         return all_data
 
@@ -74,28 +82,39 @@ class CVEAggregator:
         return res_cve
 
     @staticmethod
+    def __get_summary(soup):
+        summary = soup.find('div', class_='cvedetailssummary')
+        for tag in summary.find_all():
+            tag.extract()
+        summary = summary.text
+        summary = re.sub(r'[\n\r\t]', '', summary)
+        return summary
+
+    @staticmethod
+    def __get_cvss(soup):
+        cvss = soup.find('div', class_='cvssbox').text
+        return float(cvss)
+
+    @staticmethod
     def __get_apps(soup):
-        if 'Unknown CVE ID' in soup.text:  # illegal CVE ID
-            return list()
-        else:
-            apps_table = soup.find('table', id='vulnprodstable')
-            if apps_table is not None:
-                if 'No vulnerable product found.' in apps_table.text:
-                    return list()
-                else:
-                    trs = apps_table.find_all('tr')
-                    apps = list()
-                    for i in range(1, len(trs)):  # the first line is header
-                        tds = trs[i].find_all('td')
-                        app = dict()
-                        app['Type'] = tds[1].text.strip()
-                        app['Vendor'] = tds[2].find('a').text.strip()
-                        app['Product'] = tds[3].find('a').text.strip()
-                        app['Version'] = tds[4].text.strip()
-                        apps.append(app)
-                    return apps
-            else:
+        apps_table = soup.find('table', id='vulnprodstable')
+        if apps_table is not None:
+            if 'No vulnerable product found.' in apps_table.text:
                 return list()
+            else:
+                trs = apps_table.find_all('tr')
+                apps = list()
+                for i in range(1, len(trs)):  # the first line is header
+                    tds = trs[i].find_all('td')
+                    app = dict()
+                    app['Type'] = tds[1].text.strip()
+                    app['Vendor'] = tds[2].find('a').text.strip()
+                    app['Product'] = tds[3].find('a').text.strip()
+                    app['Version'] = tds[4].text.strip()
+                    apps.append(app)
+                return apps
+        else:
+            return list()
 
     @staticmethod
     def __get_ports(soup):
@@ -104,15 +123,12 @@ class CVEAggregator:
         :param soup: BeautifulSoup Object
         :return: a list of ports
         """
-        if 'Unknown CVE ID' in soup.text:  # illegal CVE ID
-            return list()
-        else:
-            summary = soup.find('div', class_='cvedetailssummary').text
-            ports = re.findall(r'port (\d*)', summary)
-            ports += re.findall(r'port \((\d*)\)', summary)
-            ports += re.findall(r'(\d*)/tcp', summary)
-            ports = list(filter(None, ports))  # remove empty strings
-            return list(map(int, ports))
+        summary = soup.find('div', class_='cvedetailssummary').text
+        ports = re.findall(r'port (\d*)', summary)
+        ports += re.findall(r'port \((\d*)\)', summary)
+        ports += re.findall(r'(\d*)/tcp', summary)
+        ports = list(filter(None, ports))  # remove empty strings
+        return list(map(int, ports))
 
 
 if __name__ == '__main__':
