@@ -1,6 +1,6 @@
 import shodan
-from src.aggregate.aggregator import Aggregator, AggregatorTask
-from src.aggregate.aggregator_task import AggregatorTaskType
+from src.aggregate.aggregator import Aggregator, Query
+from src.aggregate.query import QueryType
 
 API_KEY = 'LGFnk76Jfp3xzgG4u5VI9p3MD4AwMHmI'
 PAGE_MAX = 100
@@ -8,13 +8,13 @@ PAGE_MAX = 100
 
 class ShodanAggregator(Aggregator):
 
-    def fetch_data(self, task):
-        first_page_res = self.__fetch_page(task, 1)
+    def fetch_data(self, query):
+        first_page_res = self.__fetch_page(query, 1)
         if len(first_page_res) != 0:
             all_data = first_page_res['matches']
             pages = int(first_page_res['total'] / PAGE_MAX) + 1 if first_page_res['total'] % PAGE_MAX != 0 else 0
             for page_num in range(2, pages + 1):
-                res = self.__fetch_page(task, page_num)
+                res = self.__fetch_page(query, page_num)
                 all_data += res['matches']
             for data in all_data:
                 data['source'] = 'Shodan'
@@ -23,21 +23,21 @@ class ShodanAggregator(Aggregator):
             return first_page_res
 
     @staticmethod
-    def __fetch_page(task: AggregatorTask, page_num):
+    def __fetch_page(query: Query, page_num):
         """
         Fetch data on a single page
-        :param task: AggregatorTask
+        :param query: Query
         :param page_num: the number of the page, one indexed
         :return: raw data for the result (with metadata)
         """
         api = shodan.Shodan(API_KEY)
         try:
-            if task.task_type == AggregatorTaskType.hostname:
-                res = api.search(task.query, page=page_num)
-            elif task.task_type == AggregatorTaskType.ip:
-                res = api.search('ip:' + task.query, page=page_num)
-            elif task.task_type == AggregatorTaskType.net:
-                res = api.search('net:' + task.query, page=page_num)
+            if query.query_type == QueryType.hostname:
+                res = api.search(query.query, page=page_num)
+            elif query.query_type == QueryType.ip:
+                res = api.search('ip:' + query.query, page=page_num)
+            elif query.query_type == QueryType.net:
+                res = api.search('net:' + query.query, page=page_num)
             else:
                 res = dict()  # default: no results
             return res
@@ -83,9 +83,4 @@ class ShodanAggregator(Aggregator):
 
 if __name__ == '__main__':
     import json
-    # aggregator = ShodanAggregator()
-    # _task = AggregatorTask('166.111.0.0/19', AggregatorTaskType.net)
-    # aggregator.add_task(_task)
-    # with open('1.txt', 'w') as f:
-    #     f.write(json.dumps(aggregator.fetch_all()))
     print(json.dumps(ShodanAggregator.get_info_by_ip('203.91.120.151')))

@@ -35,13 +35,19 @@ class MongoHelper:
         collection.insert_many(reformatted_hosts)
         client.close()
 
-    def read_threat_by_ip(self, ip):
+    @staticmethod
+    def read_hosts_by_query(query):
         """
-        Read threat data of a host by its ip address.
-        :param ip: ip address.
-        :return: a dict of its information. Empty dict if the ip address does not exist.
+        Read hosts data by its query.
+        :param query: hostname or net.
+        :return: an iterable mongodb cursor
         """
-        pass
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[HOSTS_COLLECTION]
+        res = collection.find({'query': query})
+        client.close()
+        return res
 
     @staticmethod
     def save_cves(cves: list):
@@ -60,7 +66,7 @@ class MongoHelper:
         client.close()
 
     @staticmethod
-    def read_cve_by_year(year):
+    def read_cves_by_year(year):
         """
         Read CVE data including port and apps information by its year.
         :param year: the year.
@@ -75,6 +81,15 @@ class MongoHelper:
         res = collection.find({'name': regex})
         client.close()
         return res
+
+    @staticmethod
+    def save_threats(threats):
+        """
+
+        :param threats:
+        :return:
+        """
+        pass
 
 
 if __name__ == '__main__':

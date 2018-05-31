@@ -31,8 +31,8 @@ class CVEAggregator:
 
     def update_cves(self):
         """
-        Update the CVEs in the task_list.
-        :return: A dict of tasks.
+        Update the CVEs in the __cves.
+        :return: A dict of cve data.
         Format: [{'name': name0, 'port': [port0, port1, ...], 'apps': [{'Type': Type, 'Vendor': Vendor,
         'Product': Product, 'Version': Version}, ...]}, {...}, ...]
         """
@@ -134,9 +134,5 @@ class CVEAggregator:
 if __name__ == '__main__':
     import json
     aggregator = CVEAggregator()
-    # aggregator.set_tasks(['CVE-2018-0171', 'CVE-2007-6372', 'CVE-2018-1000179', 'CVE-2007-1833'])
-    # print(json.dumps(aggregator.update_tasks()))
-    # with open('1.txt', 'w') as f:
-    #     f.write(json.dumps(aggregator.get_cve_by_years([1999])))
     aggregator.set_cves(['CVE-1999-1342'])
     print(json.dumps(aggregator.update_cves()))

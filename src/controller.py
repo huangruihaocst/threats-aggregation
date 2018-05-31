@@ -2,7 +2,7 @@ from src.aggregate.censys_aggregator import CensysAggregator
 from src.aggregate.shodan_aggregator import ShodanAggregator
 from src.aggregate.zoomeye_aggregator import ZoomEyeAggregator
 from src.cve_details.cve_details_aggregator import CVEAggregator
-from src.aggregate.aggregator_task import AggregatorTaskType, AggregatorTask
+from src.aggregate.query import QueryType, Query
 from src.utils.mongo_helper import MongoHelper
 from threading import Thread, Lock, current_thread
 
@@ -15,7 +15,7 @@ def remove_dots(d: dict):
     """
     Remove dots in dictionary and replace it with underline.
     :param d: a nested dictionary.
-    :return: the new dictionary that all dots have been removed from keys.
+    :return: new dictionary that all dots have been removed from keys.
     """
     new_dict = dict()
     for key, value in d.items():
@@ -37,7 +37,7 @@ class AggregatorController:
     """
 
     def __init__(self):
-        self.__tasks = list()
+        self.__queries = list()
         self.__cves = list()
 
     def start_aggregate(self):
@@ -56,59 +56,58 @@ class AggregatorController:
         Save the result into database.
         :return: None
         """
-        # import datetime
-        # for task in self.__tasks:
-        #     years = list(range(CVE_START_YEAR, datetime.datetime.now().year + 1))
-        #     for year in years:
-        #         cves_cursor = MongoHelper.read_cve_by_year(year)
-        #         for cve in cves_cursor:
+        import datetime
+        for query in self.__queries:  # each query
+            # check if there are vulnerabilities by year
+            for year in range(CVE_START_YEAR, datetime.datetime.now().year + 1):
+                cves_cursor = MongoHelper.read_cves_by_year(year)
+                for cve in cves_cursor:  # each CVE
+                    hosts_cursor = MongoHelper.read_hosts_by_query(query)
+                    for host in hosts_cursor:  # each host
+                        if AggregatorController.__is_vulnerable(host, cve):
+                            # save to database
+                            pass
 
+    @staticmethod
+    def __is_vulnerable(host, cve):
+        """
+        Check if the host is vulnerable to the certain CVE.
+        :param host: host information
+        :param cve: CVE information
+        :return: True if is vulnerable, otherwise False.
+        """
         pass
 
-    def read_queries(self):
-        # TODO: read tasks (queries) from file
-        task = AggregatorTask('166.111.0.0/21', AggregatorTaskType.net)
-        self.__tasks.append(task)
+    def __read_queries(self):
+        # TODO: read queries from file
+        query = Query('166.111.0.0/21', QueryType.net)
+        self.__queries.append(query)
 
     def aggregate_hosts(self):
         """
         Aggregate hosts from Censys, Shodan and ZoomEye.
         :return: None
         """
-        # step 1: read tasks from file, get the queries
-        # self.read_queries()
-        # # step 2: initialize task list for aggregator
-        # censys_aggregator = CensysAggregator()
-        # censys_aggregator.set_tasks(self.__tasks)
-        # shodan_aggregator = ShodanAggregator()
-        # shodan_aggregator.set_tasks(self.__tasks)
-        # zoom_eye_aggregator = ZoomEyeAggregator()
-        # zoom_eye_aggregator.set_tasks(self.__tasks)
-        # # step 3: fetch all
-        # censys_res = censys_aggregator.fetch_all()
-        # shodan_res = shodan_aggregator.fetch_all()
-        # zoom_eye_res = zoom_eye_aggregator.fetch_all()
-        # # step 4: merge
-        # merged_res = AggregatorController.merge(censys_res, shodan_res, zoom_eye_res)
-        # merged_res = AggregatorController.fake_merge(censys_res, shodan_res, zoom_eye_res)
-        with open('2.txt', 'r') as f:
-            merged_res = json.loads(f.read())
+        # step 1: read queries from file, get the queries
+        self.__read_queries()
+        # step 2: initialize query list for aggregator
+        censys_aggregator = CensysAggregator()
+        censys_aggregator.set_queries(self.__queries)
+        shodan_aggregator = ShodanAggregator()
+        shodan_aggregator.set_queries(self.__queries)
+        zoom_eye_aggregator = ZoomEyeAggregator()
+        zoom_eye_aggregator.set_queries(self.__queries)
+        # step 3: fetch all
+        censys_res = censys_aggregator.fetch_all()
+        shodan_res = shodan_aggregator.fetch_all()
+        zoom_eye_res = zoom_eye_aggregator.fetch_all()
+        # step 4: merge
+        merged_res = AggregatorController.__merge(censys_res, shodan_res, zoom_eye_res)
         # step 5: save to database
-        for query in merged_res:  # merged_res: dict
-            for host in merged_res[query]:  # merged_res[query]: list
-                index = merged_res[query].index(host)
-                if 'metadata.os' in host:
-                    host['os'] = host['metadata.os']
-                    host.pop('metadata.os')
-                if 'ssl' in host and 'cert' in host['ssl'] and 'serial' in host['ssl']['cert']:
-                    host['ssl']['cert']['serial'] = str(host['ssl']['cert']['serial'])
-                host = remove_dots(host)
-                merged_res[query][index] = host
         MongoHelper.save_hosts(merged_res)
-        # return merged_res
 
     @staticmethod
-    def merge(censys_res, shodan_res, zoom_eye_res):
+    def __merge(censys_res, shodan_res, zoom_eye_res):
         """
         Merge host information from different sources and attach apps information to each host.
         The method is source sensitive. Adding new source requires rewriting of this method.
@@ -116,10 +115,7 @@ class AggregatorController:
         Format: {query0: [{field0: data0, field1: data1, ...}, {...}], query1: ...}
         """
         assert censys_res.keys() == shodan_res.keys() == zoom_eye_res.keys()
-        merged = AggregatorController.merge_res(censys_res, shodan_res, zoom_eye_res)
-
-        with open('3.txt', 'w') as f:
-            f.write(json.dumps(merged))
+        merged = AggregatorController.__merge_res(censys_res, shodan_res, zoom_eye_res)
 
         # postprocess
         for query in merged:
@@ -128,7 +124,7 @@ class AggregatorController:
                 if 'metadata.os' in host:
                     host['os'] = host['metadata.os']
                     host.pop('metadata.os')
-                # mongodb can only handle up to 64-bits int
+                # Mongodb can only handle up to 64-bits int
                 if 'ssl' in host and 'cert' in host['ssl'] and 'serial' in host['ssl']['cert']:
                     host['ssl']['cert']['serial'] = str(host['ssl']['cert']['serial'])
                 # Mongodb cannot handle key name with dots.
@@ -137,7 +133,7 @@ class AggregatorController:
         return merged
 
     @staticmethod
-    def merge_res(censys_res, shodan_res, zoom_eye_res):
+    def __merge_res(censys_res, shodan_res, zoom_eye_res):
         merged_res = dict()
         for query in censys_res:
             censys = censys_res[query]  # type: list
@@ -219,27 +215,7 @@ class AggregatorController:
                 merged_res[query].append(zoom_eye_host)
         return merged_res
 
-    @staticmethod
-    def merge_from_json(nested_json):
-        """
-        Debug method.
-        :return:
-        """
-        all_data = json.loads(nested_json)
-        censys_res = all_data['censys']
-        shodan_res = all_data['shodan']
-        zoom_eye_res = all_data['zoom_eye']
-        return AggregatorController.merge(censys_res, shodan_res, zoom_eye_res)
-
-    @staticmethod
-    def fake_merge(censys_res, shodan_res, zoom_eye_res):
-        all_data = dict()
-        all_data['censys'] = censys_res
-        all_data['shodan'] = shodan_res
-        all_data['zoom_eye'] = zoom_eye_res
-        return all_data
-
-    def read_cves(self):
+    def __read_cves(self):
         # TODO: read from file and database
         self.__cves = CVEAggregator.get_cve_by_years([2018])
 
@@ -249,8 +225,8 @@ class AggregatorController:
         :return: None
         """
         # step 1: read CVE range from file and find the difference between data in the local database and the Internet
-        # And then initialize the aggregation task
-        self.read_cves()
+        # And then initialize the aggregation queries
+        self.__read_cves()
         print('total: ' + str(len(self.__cves)))
         from copy import deepcopy
         cves = deepcopy(self.__cves)
