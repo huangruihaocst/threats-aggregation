@@ -11,6 +11,26 @@ THREADS = 8
 CVE_START_YEAR = 1999
 
 
+def remove_dots(d: dict):
+    """
+    Remove dots in dictionary and replace it with underline.
+    :param d: a nested dictionary.
+    :return: the new dictionary that all dots have been removed from keys.
+    """
+    new_dict = dict()
+    for key, value in d.items():
+        if isinstance(value, dict):
+            value = remove_dots(value)
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    index = value.index(item)
+                    item = remove_dots(item)
+                    value[index] = item
+        new_dict[key.replace('.', '_')] = value
+    return new_dict
+
+
 class AggregatorController:
     """
     The class controls the process of aggregating threats and details of CVEs.
@@ -56,26 +76,36 @@ class AggregatorController:
         :return: None
         """
         # step 1: read tasks from file, get the queries
-        self.read_queries()
-        # step 2: initialize task list for aggregator
-        censys_aggregator = CensysAggregator()
-        censys_aggregator.set_tasks(self.__tasks)
-        shodan_aggregator = ShodanAggregator()
-        shodan_aggregator.set_tasks(self.__tasks)
-        zoom_eye_aggregator = ZoomEyeAggregator()
-        zoom_eye_aggregator.set_tasks(self.__tasks)
-        # step 3: fetch all
-        censys_res = censys_aggregator.fetch_all()
-        shodan_res = shodan_aggregator.fetch_all()
-        zoom_eye_res = zoom_eye_aggregator.fetch_all()
-        # step 4: merge
-        merged_res = AggregatorController.merge(censys_res, shodan_res, zoom_eye_res)
+        # self.read_queries()
+        # # step 2: initialize task list for aggregator
+        # censys_aggregator = CensysAggregator()
+        # censys_aggregator.set_tasks(self.__tasks)
+        # shodan_aggregator = ShodanAggregator()
+        # shodan_aggregator.set_tasks(self.__tasks)
+        # zoom_eye_aggregator = ZoomEyeAggregator()
+        # zoom_eye_aggregator.set_tasks(self.__tasks)
+        # # step 3: fetch all
+        # censys_res = censys_aggregator.fetch_all()
+        # shodan_res = shodan_aggregator.fetch_all()
+        # zoom_eye_res = zoom_eye_aggregator.fetch_all()
+        # # step 4: merge
+        # merged_res = AggregatorController.merge(censys_res, shodan_res, zoom_eye_res)
         # merged_res = AggregatorController.fake_merge(censys_res, shodan_res, zoom_eye_res)
-        # with open('2.txt', 'r') as f:
-        #     merged_res = json.loads(f.read())
+        with open('2.txt', 'r') as f:
+            merged_res = json.loads(f.read())
         # step 5: save to database
-        # MongoHelper.save_hosts(merged_res)
-        return merged_res
+        for query in merged_res:  # merged_res: dict
+            for host in merged_res[query]:  # merged_res[query]: list
+                index = merged_res[query].index(host)
+                if 'metadata.os' in host:
+                    host['os'] = host['metadata.os']
+                    host.pop('metadata.os')
+                if 'ssl' in host and 'cert' in host['ssl'] and 'serial' in host['ssl']['cert']:
+                    host['ssl']['cert']['serial'] = str(host['ssl']['cert']['serial'])
+                host = remove_dots(host)
+                merged_res[query][index] = host
+        MongoHelper.save_hosts(merged_res)
+        # return merged_res
 
     @staticmethod
     def merge(censys_res, shodan_res, zoom_eye_res):
@@ -94,11 +124,16 @@ class AggregatorController:
         # postprocess
         for query in merged:
             for host in merged[query]:
-                if 'os' in host and 'metadata.os' in host:
+                index = merged[query].index(host)
+                if 'metadata.os' in host:
                     host['os'] = host['metadata.os']
                     host.pop('metadata.os')
-                elif 'metadata.os' in host and 'os' not in host:
-                    host['os'] = host['metadata.os']
+                # mongodb can only handle up to 64-bits int
+                if 'ssl' in host and 'cert' in host['ssl'] and 'serial' in host['ssl']['cert']:
+                    host['ssl']['cert']['serial'] = str(host['ssl']['cert']['serial'])
+                # Mongodb cannot handle key name with dots.
+                host = remove_dots(host)
+                merged[query][index] = host
         return merged
 
     @staticmethod
@@ -171,14 +206,16 @@ class AggregatorController:
                 censys_additional = CensysAggregator.get_info_by_ip(zoom_eye_host['ip'])
                 if len(censys_additional) > 0:  # new information from Censys
                     censys_additional.pop('ip')
+                    source_saved = zoom_eye_host['source']  # in order not to be covered by merging dict
                     zoom_eye_host = dict({**zoom_eye_host, **censys_additional})
-                    zoom_eye_host['source'] = zoom_eye_host['source'] + '/Censys'
+                    zoom_eye_host['source'] = source_saved + '/Censys'
                 shodan_additional = ShodanAggregator.get_info_by_ip(zoom_eye_host['ip'])
                 if len(shodan_additional) > 0:  # new information from Shodan
                     shodan_additional.pop('ip')
                     shodan_additional.pop('ip_str')
+                    source_saved = zoom_eye_host['source']  # in order not to be covered by merging dict
                     zoom_eye_host = dict({**zoom_eye_host, **shodan_additional})
-                    zoom_eye_host['source'] = zoom_eye_host['source'] + '/Shodan'
+                    zoom_eye_host['source'] = source_saved + '/Shodan'
                 merged_res[query].append(zoom_eye_host)
         return merged_res
 
@@ -253,6 +290,12 @@ class AggregatorController:
 if __name__ == '__main__':
     import json
     controller = AggregatorController()
-    with open('2.txt', 'w') as f:
-        f.write(json.dumps(controller.aggregate_hosts()))
+    controller.aggregate_hosts()
+    # with open('2.txt', 'w') as f:
+    #     f.write(json.dumps(controller.aggregate_hosts()))
     # controller.aggregate_cve_details()
+    # with open('4.txt', 'r') as f:
+    #     d = json.loads(f.read())
+    # d = {'http': {'html': '12345', 'components': {'animate.css': {'categories': ['Web']}}}}
+    # d = remove_dots(d)
+    # print(json.dumps(d))
