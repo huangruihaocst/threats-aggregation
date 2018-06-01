@@ -59,5 +59,5 @@ class CensysAggregator(Aggregator):
 
 
 if __name__ == '__main__':
-    print(CensysAggregator.get_info_by_ip('166.111.4.40'))
+    print(CensysAggregator.get_info_by_ip('166.111.176.55'))
 

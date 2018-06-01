@@ -30,6 +30,12 @@ def remove_dots(d: dict):
         new_dict[key.replace('.', '_')] = value
     return new_dict
 
+def has_same_item(l1: list, l2: list):
+    for item in l1:
+        if item in l2:
+            return True
+    return False
+
 
 class AggregatorController:
     """
@@ -57,26 +63,104 @@ class AggregatorController:
         :return: None
         """
         import datetime
+        self.__queries = ['166.111.0.0/21']
         for query in self.__queries:  # each query
             # check if there are vulnerabilities by year
-            for year in range(CVE_START_YEAR, datetime.datetime.now().year + 1):
-                cves_cursor = MongoHelper.read_cves_by_year(year)
-                for cve in cves_cursor:  # each CVE
-                    hosts_cursor = MongoHelper.read_hosts_by_query(query)
-                    for host in hosts_cursor:  # each host
-                        if AggregatorController.__is_vulnerable(host, cve):
-                            # save to database
-                            pass
+            # for year in range(CVE_START_YEAR, datetime.datetime.now().year + 1):
+            #     cves_cursor = MongoHelper.read_cves_by_year(year)
+            #     for cve in cves_cursor:  # each CVE
+            #         hosts_cursor = MongoHelper.read_hosts_by_query(query)
+            #         for host in hosts_cursor:  # each host
+            hosts_cursor = MongoHelper.read_hosts_by_query(query)
+            for host in hosts_cursor:
+                AggregatorController.__get_vulnerabilities(host, None)
 
     @staticmethod
-    def __is_vulnerable(host, cve):
+    def __get_vulnerabilities(host, cve):
         """
         Check if the host is vulnerable to the certain CVE.
         :param host: host information
         :param cve: CVE information
-        :return: True if is vulnerable, otherwise False.
+        :return: a list of vulnerable apps
         """
-        pass
+        # step 1: merge app list
+        apps = list()
+        if 'product' in host:
+            app = dict()
+            app['name'] = host['product']
+            if 'version' in host:
+                app['version'] = host['version']
+            else:
+                app['version'] = None
+            apps.append(app)
+        if 'http' in host and 'components' in host['http'] and len(host['http']['components']) > 0:
+            for component in host['http']['components']:
+                apps.append({'name': component, 'version': None})
+        app_types = ['component', 'db', 'webapp', 'server', 'framework', 'waf']
+        for app_type in app_types:
+            if app_type in host and len(host[app_type]) > 0:
+                for app in host[app_type]:
+                    app_dict = dict()
+                    app_dict['name'] = app['name']
+                    if 'version' in app:
+                        app_dict['version'] = app['version']
+                    else:
+                        app_dict['version'] = None
+                    apps.append(app_dict)
+        if 'system' in host and len(host['system']) > 0:
+            for system in host['system']:
+                app = dict()
+                app['name'] = system['distrib']
+                if 'version' in system:
+                    app['version'] = system['version']
+                else:
+                    app['version'] = None
+                apps.append(app)
+        if 'language' in host and len(host['language']) > 0:
+            for language in host['language']:
+                apps.append({'name': language, 'version': None})
+
+        # step 2: merge ports list
+        ports = list()
+        if 'protocols' in host:
+            for protocol in host['protocols']:
+                ports.append(int(protocol.split('/')[0]))
+        if 'port' in host:
+            if host['port'] not in ports:
+                ports.append(host['port'])
+
+        # step 3: compare with CVE data
+        if len(cve['ports']) == 0 and len(cve['apps']) == 0:
+            return list()
+        else:
+            # condition: (one of the ports or no port specified) and (one of the apps)
+            vul = True
+            vul_apps = list()
+            if len(cve['ports']) > 0:
+                if len(ports) <= 0:
+                    return list()
+                else:
+                    vul = has_same_item(ports, cve['ports'])
+            if vul:  # met the first condition
+                if len(cve['apps']) > 0:
+                    if len(apps) <= 0:
+                        return list()
+                    else:
+                        for app in apps:
+                            for cve_app in cve['apps']:
+                                if app['name'] == cve_app['Product']:
+                                    # TODO: change to 'is not None' for cve_app
+                                    if app['version'] is not None and cve_app['Version'] != '-':
+                                        import re
+                                        re.sub(r'\(.*\)', '', cve_app['Version'])
+                                        if cve_app['Version'][-1] == '.':
+                                            cve_app['Version'] = cve_app['Version'][:-1]
+                                        if app['version'] == cve_app['Version']:
+                                            vul_apps.append(cve_app)
+                return vul_apps
+            else:
+                return list()
+
 
     def __read_queries(self):
         # TODO: read queries from file
@@ -266,12 +350,5 @@ class AggregatorController:
 if __name__ == '__main__':
     import json
     controller = AggregatorController()
-    controller.aggregate_hosts()
-    # with open('2.txt', 'w') as f:
-    #     f.write(json.dumps(controller.aggregate_hosts()))
-    # controller.aggregate_cve_details()
-    # with open('4.txt', 'r') as f:
-    #     d = json.loads(f.read())
-    # d = {'http': {'html': '12345', 'components': {'animate.css': {'categories': ['Web']}}}}
-    # d = remove_dots(d)
-    # print(json.dumps(d))
+    # controller.aggregate_hosts()
+    controller.analyze()

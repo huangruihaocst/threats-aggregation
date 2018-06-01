@@ -111,6 +111,8 @@ class CVEAggregator:
                     app['Vendor'] = tds[2].find('a').text.strip()
                     app['Product'] = tds[3].find('a').text.strip()
                     app['Version'] = tds[4].text.strip()
+                    if app['Version'] == '-':
+                        app['Version'] = None
                     apps.append(app)
                 return apps
         else:
@@ -134,5 +136,5 @@ class CVEAggregator:
 if __name__ == '__main__':
     import json
     aggregator = CVEAggregator()
-    aggregator.set_cves(['CVE-1999-1342'])
+    aggregator.set_cves(['CVE-2018-1170'])
     print(json.dumps(aggregator.update_cves()))
