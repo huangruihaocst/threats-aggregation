@@ -32,6 +32,9 @@ class MongoHelper:
             for host in hosts[query]:
                 host['query'] = query
                 reformatted_hosts.append(host)
+        import json
+        with open('3.txt', 'w') as f:
+            f.write(json.dumps(reformatted_hosts))
         collection.insert_many(reformatted_hosts)
         client.close()
 

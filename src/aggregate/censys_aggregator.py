@@ -5,8 +5,11 @@ from src.aggregate.aggregator import Aggregator, Query
 from src.aggregate.query import QueryType
 
 API_URL = "https://censys.io/api/v1"
-UID = "97c34127-c350-45a6-81a2-7290b0a0f68d"
-SECRET = "aHSyRxEsdiaDYbeQzdOkssNBLFMVdNnm"
+# UID = "97c34127-c350-45a6-81a2-7290b0a0f68d"
+# SECRET = "aHSyRxEsdiaDYbeQzdOkssNBLFMVdNnm"
+
+UID = 'a4ec2e6d-85c7-4bbd-8534-69d1f328f004'
+SECRET = 'QoWszHM2phUHc60osVqafy4I4IiiEjYe'
 
 
 class CensysAggregator(Aggregator):
@@ -59,5 +62,8 @@ class CensysAggregator(Aggregator):
 
 
 if __name__ == '__main__':
-    print(CensysAggregator.get_info_by_ip('166.111.176.55'))
-
+    # print(CensysAggregator.get_info_by_ip('166.111.176.55'))
+    c = CensysAggregator()
+    queries = [Query('166.111.0.0/21', QueryType.net)]
+    c.set_queries(queries)
+    print(json.dumps(c.fetch_all()))

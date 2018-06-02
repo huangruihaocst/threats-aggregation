@@ -30,12 +30,23 @@ def remove_dots(d: dict):
         new_dict[key.replace('.', '_')] = value
     return new_dict
 
+
 def has_same_item(l1: list, l2: list):
     for item in l1:
         if item in l2:
             return True
     return False
 
+def longest_match(s1: str, s2: str):
+    """
+    Find the length of longest substring of s1 and s2.
+    :param s1: string 1
+    :param s2: string 2
+    :return: the length of the longest substring
+    """
+    from difflib import SequenceMatcher
+    match = SequenceMatcher(None, s1.lower(), s2.lower()).find_longest_match(0, len(s1), 0, len(s2))
+    return match.size
 
 class AggregatorController:
     """
@@ -60,42 +71,50 @@ class AggregatorController:
         """
         Use threats data and CVE data to analyze which hosts are vulnerability.
         Save the result into database.
+        Format: {query0: [{'ip': ip0, 'CVEs': ['name': name0, 'ports': [...], 'apps': [...], 'source': 'CVE Details'], ...}
         :return: None
         """
         import datetime
-        self.__queries = ['166.111.0.0/21']
-        for query in self.__queries:  # each query
-            # check if there are vulnerabilities by year
-            # for year in range(CVE_START_YEAR, datetime.datetime.now().year + 1):
-            #     cves_cursor = MongoHelper.read_cves_by_year(year)
-            #     for cve in cves_cursor:  # each CVE
-            #         hosts_cursor = MongoHelper.read_hosts_by_query(query)
-            #         for host in hosts_cursor:  # each host
-            hosts_cursor = MongoHelper.read_hosts_by_query(query)
-            for host in hosts_cursor:
-                AggregatorController.__get_vulnerabilities(host, None)
+        # self.__queries = ['166.111.0.0/21']  # TODO: should be removed
+        all_vulns = dict()
+        # for query in self.__queries:  # each query
+        #     # check if there are vulnerabilities by year
+        #     all_vulns[query] = list()
+        #     for host in MongoHelper.read_hosts_by_query(query):
+        #         for
+        #     for year in range(CVE_START_YEAR, datetime.datetime.now().year + 1):
+        #         cves_cursor = MongoHelper.read_cves_by_year(year)
+        #         for cve in cves_cursor:  # each CVE
+        #             hosts_cursor =
+        #             for host in hosts_cursor:  # each host
+        #                 vuln_ports, vuln_apps = AggregatorController.__is_vulnerable(host, cve)
+        #                 if len(vuln_ports) > 0 or len(vuln_apps) > 0:
+        #                     vulns = dict()
+
+
 
     @staticmethod
-    def __get_vulnerabilities(host, cve):
+    def __get_host_apps(host):
         """
-        Check if the host is vulnerable to the certain CVE.
-        :param host: host information
-        :param cve: CVE information
-        :return: a list of vulnerable apps
+        Get the apps of a host, including OS, webapp, framework and so on.
+        :param host: the ip address of the host.
+        :return: a list of apps.
+        format: [{'name': name0, 'version': version0}, {...}, ...]
         """
-        # step 1: merge app list
         apps = list()
-        if 'product' in host:
-            app = dict()
-            app['name'] = host['product']
-            if 'version' in host:
-                app['version'] = host['version']
-            else:
-                app['version'] = None
-            apps.append(app)
-        if 'http' in host and 'components' in host['http'] and len(host['http']['components']) > 0:
-            for component in host['http']['components']:
-                apps.append({'name': component, 'version': None})
+        # from Shodan
+        if 'data' in host:
+            for data in host['data']:
+                if 'product' in data:
+                    app = dict()
+                    app['name'] = data['product']
+                    app['version'] = data['version'] if 'version' in data else None
+                    apps.append(app)
+            if 'http' in host['data'] and 'components' in host['data']['http'] \
+                    and len(host['data']['http']['components']) > 0:
+                for component in host['data']['http']['components']:
+                    apps.append({'name': component, 'version': None})
+        # from ZoomEye
         app_types = ['component', 'db', 'webapp', 'server', 'framework', 'waf']
         for app_type in app_types:
             if app_type in host and len(host[app_type]) > 0:
@@ -119,8 +138,16 @@ class AggregatorController:
         if 'language' in host and len(host['language']) > 0:
             for language in host['language']:
                 apps.append({'name': language, 'version': None})
+        return apps
 
-        # step 2: merge ports list
+    @staticmethod
+    def __get_host_ports(host):
+        """
+        Get all the open ports of the host.
+        :param host: the ip address of the host.
+        :return: A list of open ports.
+        format: [port0, port1, ...]
+        """
         ports = list()
         if 'protocols' in host:
             for protocol in host['protocols']:
@@ -128,43 +155,46 @@ class AggregatorController:
         if 'port' in host:
             if host['port'] not in ports:
                 ports.append(host['port'])
+        return ports
+
+    @staticmethod
+    def __is_vulnerable(host, cve):
+        """
+        Check if the host is vulnerable to the certain CVE.
+        :param host: host information
+        :param cve: CVE information
+        :return: The reason why it is vulnerable.
+        format: ports: list, apps: list (tuple)
+        """
+        # step 1: merge app list
+        apps = AggregatorController.__get_host_apps(host)
+
+        # step 2: merge ports list
+        ports = AggregatorController.__get_host_ports(host)
 
         # step 3: compare with CVE data
         if len(cve['ports']) == 0 and len(cve['apps']) == 0:
-            return list()
+            return False, list(), list()
         else:
-            # condition: (one of the ports or no port specified) and (one of the apps)
-            vul = True
-            vul_apps = list()
-            if len(cve['ports']) > 0:
-                if len(ports) <= 0:
-                    return list()
-                else:
-                    vul = has_same_item(ports, cve['ports'])
-            if vul:  # met the first condition
-                if len(cve['apps']) > 0:
-                    if len(apps) <= 0:
-                        return list()
+            # condition: (one of the ports) or (one of the apps)
+            vuln_ports = list(set(ports).intersection(cve['ports']))
+            vuln_apps = list()
+            for cve_app in cve['apps']:
+                for app in apps:
+                    # same app strategy: scoring
+                    score = 0
+                    score += longest_match(cve_app['Name'], app['name']) / min(cve_app['Name'], app['name'])
+                    if cve_app['version'] is None or app['version'] is None:
+                        score += 0.5
                     else:
-                        for app in apps:
-                            for cve_app in cve['apps']:
-                                if app['name'] == cve_app['Product']:
-                                    # TODO: change to 'is not None' for cve_app
-                                    if app['version'] is not None and cve_app['Version'] != '-':
-                                        import re
-                                        re.sub(r'\(.*\)', '', cve_app['Version'])
-                                        if cve_app['Version'][-1] == '.':
-                                            cve_app['Version'] = cve_app['Version'][:-1]
-                                        if app['version'] == cve_app['Version']:
-                                            vul_apps.append(cve_app)
-                return vul_apps
-            else:
-                return list()
-
+                        score += longest_match(cve_app['Version'], app['version']) / cve_app['Version'], app['version']
+                    if score > 1:
+                        vuln_apps.append(app)
+            return vuln_ports, vuln_apps
 
     def __read_queries(self):
         # TODO: read queries from file
-        query = Query('166.111.0.0/21', QueryType.net)
+        query = Query('166.111.0.0/16', QueryType.net)
         self.__queries.append(query)
 
     def aggregate_hosts(self):
@@ -174,6 +204,7 @@ class AggregatorController:
         """
         # step 1: read queries from file, get the queries
         self.__read_queries()
+
         # step 2: initialize query list for aggregator
         censys_aggregator = CensysAggregator()
         censys_aggregator.set_queries(self.__queries)
@@ -181,12 +212,31 @@ class AggregatorController:
         shodan_aggregator.set_queries(self.__queries)
         zoom_eye_aggregator = ZoomEyeAggregator()
         zoom_eye_aggregator.set_queries(self.__queries)
+
         # step 3: fetch all
-        censys_res = censys_aggregator.fetch_all()
-        shodan_res = shodan_aggregator.fetch_all()
-        zoom_eye_res = zoom_eye_aggregator.fetch_all()
+        # censys_res = censys_aggregator.fetch_all()
+        with open('censys.txt', 'r') as f:
+            censys_res = json.loads(f.read())
+        # with open('censys.txt', 'w') as f:
+        #     f.write(json.dumps(censys_res))
+        print('censys done.')
+        # shodan_res = shodan_aggregator.fetch_all()
+        with open('shodan.txt', 'r') as f:
+            shodan_res = json.loads(f.read())
+        # with open('shodan.txt', 'w') as f:
+        #     f.write(json.dumps(shodan_res))
+        print('shodan done.')
+        # zoom_eye_res = zoom_eye_aggregator.fetch_all()
+        with open('zoomeye.txt', 'r') as f:
+            zoom_eye_res = json.loads(f.read())
+        # with open('zoomeye.txt', 'w') as f:
+        #     f.write(json.dumps(zoom_eye_res))
+        print('zoomeye done.')
+
         # step 4: merge
         merged_res = AggregatorController.__merge(censys_res, shodan_res, zoom_eye_res)
+        print('merging done.')
+
         # step 5: save to database
         MongoHelper.save_hosts(merged_res)
 
@@ -205,6 +255,7 @@ class AggregatorController:
         for query in merged:
             for host in merged[query]:
                 index = merged[query].index(host)
+                # TODO: now in 'data'
                 if 'metadata.os' in host:
                     host['os'] = host['metadata.os']
                     host.pop('metadata.os')
@@ -218,6 +269,7 @@ class AggregatorController:
 
     @staticmethod
     def __merge_res(censys_res, shodan_res, zoom_eye_res):
+        from copy import deepcopy
         merged_res = dict()
         for query in censys_res:
             censys = censys_res[query]  # type: list
@@ -228,49 +280,51 @@ class AggregatorController:
             mid_merged_res = list()  # the list used to contain the merged result of Censys and Shodan
             for censys_host in censys:
                 ip = censys_host['ip']
-                shodan_corr = [shodan_host for shodan_host in shodan if shodan_host['ip_str'] == ip]
+                # there won't be identical ip address in shodan_res
+                shodan_corr = [host for host in shodan if host['ip_str'] == ip]
                 if len(shodan_corr) > 0:  # same ip address in Censys and Shodan
-                    shodan_latest = ShodanAggregator.get_latest(shodan_corr)  # find the latest information
                     merged = censys_host
-                    shodan_latest.pop('ip')
-                    shodan_latest.pop('ip_str')
-                    shodan_latest.pop('source')
-                    merged = dict({**merged, **shodan_latest})
-                    if 'tags' in shodan_latest:
-                        merged['tags'] = censys_host['tags'] + shodan_latest['tags']
+                    corr_copy = deepcopy(shodan_corr[0])
+                    corr_copy.pop('ip')
+                    corr_copy.pop('ip_str')
+                    corr_copy.pop('source')
+                    merged = dict({**merged, **corr_copy})
+                    if 'tags' in shodan_corr[0]:
+                        merged['tags'] += corr_copy['tags']
                     merged['source'] = 'Censys/Shodan'
                     mid_merged_res.append(merged)
-                    shodan = [shodan_host for shodan_host in shodan if shodan_host not in shodan_corr]
+                    shodan = [host for host in shodan if host not in shodan_corr]
                 else:  # no corresponding result in Shodan
                     shodan_additional = ShodanAggregator.get_info_by_ip(censys_host['ip'])
-                    if len(shodan_additional) > 0:  # new information from Shodan
+                    # at least there will be a 'ip_str' field
+                    if len(shodan_additional) > 1:  # new information from Shodan
                         shodan_additional.pop('ip')
                         shodan_additional.pop('ip_str')
                         censys_host = dict({**censys_host, **shodan_additional})
                         censys_host['source'] = 'Censys/Shodan'
                     mid_merged_res.append(censys_host)
+            # no need to search Censys again, add the rest directly to merged result
             for shodan_host in shodan:  # no corresponding in Censys
                 shodan_host['ip'] = shodan_host['ip_str']
                 shodan_host.pop('ip_str')
-                censys_additional = CensysAggregator.get_info_by_ip(shodan_host['ip'])
-                if len(censys_additional) > 0:  # new information from Censys
-                    censys_additional.pop('ip')
-                    shodan_host = dict({**shodan_host, **censys_additional})
-                    shodan_host['source'] = 'Censys/Shodan'
                 mid_merged_res.append(shodan_host)
+            with open('mid.txt', 'w') as f:
+                f.write(json.dumps(mid_merged_res))
+            print('merge censys and shodan done.')
             # step 2: merge censys+shodan and zoom_eye
             for merged in mid_merged_res:
                 ip = merged['ip']
-                zoom_eye_corr = [zoom_eye_host for zoom_eye_host in zoom_eye if zoom_eye_host['ip'][0] == ip]
+                zoom_eye_corr = [host for host in zoom_eye if host['ip'][0] == ip]
                 if len(zoom_eye_corr) > 0:  # same ip address in merged and ZoomEye
                     zoom_eye_latest = ZoomEyeAggregator.get_latest(zoom_eye_corr)
-                    zoom_eye_latest.pop('ip')
-                    zoom_eye_latest.pop('geoinfo')
+                    corr_copy = deepcopy(zoom_eye_latest)
+                    corr_copy.pop('ip')
+                    corr_copy.pop('geoinfo')
                     source_saved = merged['source']  # in order not to be covered by merging dict
-                    merged = dict({**merged, **zoom_eye_latest})
+                    merged = dict({**merged, **corr_copy})
                     merged['source'] = source_saved + '/ZoomEye'
                     merged_res[query].append(merged)
-                    zoom_eye = [zoom_eye_host for zoom_eye_host in zoom_eye if zoom_eye_host not in zoom_eye_corr]
+                    zoom_eye = [host for host in zoom_eye if host not in zoom_eye_corr]
                 else:  # no corresponding in ZoomEye
                     zoom_eye_additional = ZoomEyeAggregator.get_info_by_ip(merged['ip'])
                     if len(zoom_eye_additional) > 0:  # new information from ZoomEye
@@ -283,12 +337,7 @@ class AggregatorController:
             for zoom_eye_host in zoom_eye:  # no corresponding in merged
                 zoom_eye_host['ip'] = zoom_eye_host['ip'][0]
                 zoom_eye_host.pop('geoinfo')
-                censys_additional = CensysAggregator.get_info_by_ip(zoom_eye_host['ip'])
-                if len(censys_additional) > 0:  # new information from Censys
-                    censys_additional.pop('ip')
-                    source_saved = zoom_eye_host['source']  # in order not to be covered by merging dict
-                    zoom_eye_host = dict({**zoom_eye_host, **censys_additional})
-                    zoom_eye_host['source'] = source_saved + '/Censys'
+                # no need to search Censys again
                 shodan_additional = ShodanAggregator.get_info_by_ip(zoom_eye_host['ip'])
                 if len(shodan_additional) > 0:  # new information from Shodan
                     shodan_additional.pop('ip')
@@ -351,4 +400,4 @@ if __name__ == '__main__':
     import json
     controller = AggregatorController()
     # controller.aggregate_hosts()
-    controller.analyze()
+    controller.aggregate_cve_details()

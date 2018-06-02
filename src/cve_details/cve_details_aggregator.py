@@ -4,6 +4,8 @@ import re
 
 ALL_CVE_URL = 'http://cve.mitre.org/data/downloads/allitems.txt'
 CVE_DETAILS_URL = 'https://www.cvedetails.com/cve'
+GOOGLE_PROXY_URL = 'https://g.jinzihao.info'
+EXPLOIT_DB_URL = 'www.exploit-db.com'
 
 
 class CVEAggregator:
@@ -132,9 +134,38 @@ class CVEAggregator:
         ports = list(filter(None, ports))  # remove empty strings
         return list(map(int, ports))
 
+    @staticmethod
+    def get_script(cve):
+        """
+        Get the testing script address.
+        :param cve: the CVE name.
+        :return: the urls of the testing script from exploit-db. Empty list if no scripts found.
+        """
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) '
+                          'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/11.1 Safari/605.1.15'
+        }
+        html = requests.get(GOOGLE_PROXY_URL + '/search?q=' + cve + '%20' + 'site:' + EXPLOIT_DB_URL,
+                            headers=headers).text
+        soup = BeautifulSoup(html, 'html.parser')
+        sites = soup.find_all('div', class_='g')
+        scripts = list()
+        for site in sites:
+            script = site.find('cite')
+            if script is not None:
+                script = script.text
+            else:  # images or something else, not scripts
+                continue
+            summary = site.find('span', class_='st').text
+            re.sub(r'\s', '', summary)
+            if cve in summary:
+                scripts.append(script)
+        return scripts
+
 
 if __name__ == '__main__':
     import json
-    aggregator = CVEAggregator()
-    aggregator.set_cves(['CVE-2018-1170'])
-    print(json.dumps(aggregator.update_cves()))
+    # aggregator = CVEAggregator()
+    # aggregator.set_cves(['CVE-2018-1170'])
+    # print(json.dumps(aggregator.update_cves()))
+    # print(json.dumps(CVEAggregator.get_script('CVE-2016-0989')))
