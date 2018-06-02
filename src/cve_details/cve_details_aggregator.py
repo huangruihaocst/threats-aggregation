@@ -55,6 +55,7 @@ class CVEAggregator:
                 data['apps'] = CVEAggregator.__get_apps(soup)
                 data['cvss'] = CVEAggregator.__get_cvss(soup)
                 data['summary'] = CVEAggregator.__get_summary(soup)
+            data['scripts'] = CVEAggregator.__get_script(cve)
             all_data.append(data)
         return all_data
 
@@ -135,7 +136,7 @@ class CVEAggregator:
         return list(map(int, ports))
 
     @staticmethod
-    def get_script(cve):
+    def __get_script(cve):
         """
         Get the testing script address.
         :param cve: the CVE name.
@@ -165,7 +166,7 @@ class CVEAggregator:
 
 if __name__ == '__main__':
     import json
-    # aggregator = CVEAggregator()
-    # aggregator.set_cves(['CVE-2018-1170'])
-    # print(json.dumps(aggregator.update_cves()))
+    aggregator = CVEAggregator()
+    aggregator.set_cves(['CVE-2018-0171'])
+    print(json.dumps(aggregator.update_cves()))
     # print(json.dumps(CVEAggregator.get_script('CVE-2016-0989')))
