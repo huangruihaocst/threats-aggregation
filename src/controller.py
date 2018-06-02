@@ -37,6 +37,7 @@ def has_same_item(l1: list, l2: list):
             return True
     return False
 
+
 def longest_match(s1: str, s2: str):
     """
     Find the length of longest substring of s1 and s2.
@@ -47,6 +48,7 @@ def longest_match(s1: str, s2: str):
     from difflib import SequenceMatcher
     match = SequenceMatcher(None, s1.lower(), s2.lower()).find_longest_match(0, len(s1), 0, len(s2))
     return match.size
+
 
 class AggregatorController:
     """
@@ -214,21 +216,21 @@ class AggregatorController:
         zoom_eye_aggregator.set_queries(self.__queries)
 
         # step 3: fetch all
-        # censys_res = censys_aggregator.fetch_all()
-        with open('censys.txt', 'r') as f:
-            censys_res = json.loads(f.read())
+        censys_res = censys_aggregator.fetch_all()
+        # with open('censys.txt', 'r') as f:
+        #     censys_res = json.loads(f.read())
         # with open('censys.txt', 'w') as f:
         #     f.write(json.dumps(censys_res))
         print('censys done.')
-        # shodan_res = shodan_aggregator.fetch_all()
-        with open('shodan.txt', 'r') as f:
-            shodan_res = json.loads(f.read())
+        shodan_res = shodan_aggregator.fetch_all()
+        # with open('shodan.txt', 'r') as f:
+        #     shodan_res = json.loads(f.read())
         # with open('shodan.txt', 'w') as f:
         #     f.write(json.dumps(shodan_res))
         print('shodan done.')
-        # zoom_eye_res = zoom_eye_aggregator.fetch_all()
-        with open('zoomeye.txt', 'r') as f:
-            zoom_eye_res = json.loads(f.read())
+        zoom_eye_res = zoom_eye_aggregator.fetch_all()
+        # with open('zoomeye.txt', 'r') as f:
+        #     zoom_eye_res = json.loads(f.read())
         # with open('zoomeye.txt', 'w') as f:
         #     f.write(json.dumps(zoom_eye_res))
         print('zoomeye done.')
@@ -255,13 +257,17 @@ class AggregatorController:
         for query in merged:
             for host in merged[query]:
                 index = merged[query].index(host)
-                # TODO: now in 'data'
-                if 'metadata.os' in host:
-                    host['os'] = host['metadata.os']
-                    host.pop('metadata.os')
                 # Mongodb can only handle up to 64-bits int
-                if 'ssl' in host and 'cert' in host['ssl'] and 'serial' in host['ssl']['cert']:
-                    host['ssl']['cert']['serial'] = str(host['ssl']['cert']['serial'])
+                if 'data' in host:
+                    for data in host['data']:
+                        if 'ssl' in data and 'cert' in data['ssl'] and 'serial' in data['ssl']['cert']:
+                            data['ssl']['cert']['serial'] = str(data['ssl']['cert']['serial'])
+                        # MongoDb cannot handle unicode and html is actually useless in this way
+                        if 'html' in data:
+                            data.pop('html')
+                        if 'http' in data:
+                            if 'html' in data['http']:
+                                data['http'].pop('html')
                 # Mongodb cannot handle key name with dots.
                 host = remove_dots(host)
                 merged[query][index] = host
@@ -308,8 +314,6 @@ class AggregatorController:
                 shodan_host['ip'] = shodan_host['ip_str']
                 shodan_host.pop('ip_str')
                 mid_merged_res.append(shodan_host)
-            with open('mid.txt', 'w') as f:
-                f.write(json.dumps(mid_merged_res))
             print('merge censys and shodan done.')
             # step 2: merge censys+shodan and zoom_eye
             for merged in mid_merged_res:
@@ -334,12 +338,14 @@ class AggregatorController:
                         merged = dict({**merged, **zoom_eye_additional})
                         merged['source'] = source_saved + '/ZoomEye'
                     merged_res[query].append(merged)
+            with open('mid2.txt', 'w') as f:
+                f.write(json.dumps(merged_res))
             for zoom_eye_host in zoom_eye:  # no corresponding in merged
                 zoom_eye_host['ip'] = zoom_eye_host['ip'][0]
                 zoom_eye_host.pop('geoinfo')
                 # no need to search Censys again
                 shodan_additional = ShodanAggregator.get_info_by_ip(zoom_eye_host['ip'])
-                if len(shodan_additional) > 0:  # new information from Shodan
+                if len(shodan_additional) > 1:  # new information from Shodan
                     shodan_additional.pop('ip')
                     shodan_additional.pop('ip_str')
                     source_saved = zoom_eye_host['source']  # in order not to be covered by merging dict
@@ -382,7 +388,7 @@ class AggregatorController:
                 MongoHelper.save_cves(res)
                 lock.acquire()
                 try:
-                    done += len(current)
+                    done += len(res)
                     print(current_thread().name + ' ' + str(done) + ' done.')
                 finally:
                     lock.release()
@@ -399,5 +405,5 @@ class AggregatorController:
 if __name__ == '__main__':
     import json
     controller = AggregatorController()
-    # controller.aggregate_hosts()
-    controller.aggregate_cve_details()
+    controller.aggregate_hosts()
+    # controller.aggregate_cve_details()

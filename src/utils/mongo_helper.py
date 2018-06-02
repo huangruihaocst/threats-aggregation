@@ -32,9 +32,6 @@ class MongoHelper:
             for host in hosts[query]:
                 host['query'] = query
                 reformatted_hosts.append(host)
-        import json
-        with open('3.txt', 'w') as f:
-            f.write(json.dumps(reformatted_hosts))
         collection.insert_many(reformatted_hosts)
         client.close()
 
@@ -58,13 +55,16 @@ class MongoHelper:
         Save CVE details into database.
         :param cves: a list of cve data.
         Format: [{'name': name0, 'port': [port0, port1, ...], 'apps': [{'Type': Type, 'Vendor': Vendor,
-        'Product': Product, 'Version': Version}, ...]}, {...}, ...]
+        'Product': Product, 'Version': Version}, ...], 'cvss': cvss0, 'summary': summary0,
+        'scripts': [script0, script1, ...]}, {...}, ...]
+        Actually there is no 'scripts' field now.
         :return: None
         """
         client = MongoClient(DB_HOST, DB_PORT)
         db = client[DB_NAME]
         collection = db[CVES_COLLECTION]
-        # format: [{'name': name0, 'ports': [port0, ...], 'apps': [...]}, {...}]
+        # format: [{'name': name0, 'ports': [port0, ...], 'apps': [...], 'cvss': cvss0, 'summary': summary0,
+        # 'scripts': [...]}, {...}]
         collection.insert_many(cves)
         client.close()
 
@@ -80,7 +80,7 @@ class MongoHelper:
         db = client[DB_NAME]
         collection = db[CVES_COLLECTION]
         import re
-        regex = re.compile('CVE-' + str(year) + '-\d{4}')
+        regex = re.compile('CVE-' + str(year) + '-\d*')
         res = collection.find({'name': regex})
         client.close()
         return res

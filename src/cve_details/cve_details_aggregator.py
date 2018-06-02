@@ -5,6 +5,7 @@ import re
 ALL_CVE_URL = 'http://cve.mitre.org/data/downloads/allitems.txt'
 CVE_DETAILS_URL = 'https://www.cvedetails.com/cve'
 GOOGLE_PROXY_URL = 'https://g.jinzihao.info'
+GOOGLE_URL = 'https://www.google.com'
 EXPLOIT_DB_URL = 'www.exploit-db.com'
 
 
@@ -46,16 +47,13 @@ class CVEAggregator:
             soup = BeautifulSoup(html, 'html.parser')
             data['name'] = cve
             if 'Unknown CVE ID' in soup.text:  # illegal CVE ID
-                data['ports'] = list()
-                data['apps'] = list()
-                data['cvss'] = None
-                data['summary'] = None
+                continue
             else:
                 data['ports'] = CVEAggregator.__get_ports(soup)
                 data['apps'] = CVEAggregator.__get_apps(soup)
                 data['cvss'] = CVEAggregator.__get_cvss(soup)
                 data['summary'] = CVEAggregator.__get_summary(soup)
-            data['scripts'] = CVEAggregator.__get_script(cve)
+            # data['scripts'] = CVEAggregator.__get_scripts(cve)
             all_data.append(data)
         return all_data
 
@@ -66,7 +64,7 @@ class CVEAggregator:
         :return: a list of CVE names.
         """
         txt = requests.get(ALL_CVE_URL).text
-        res = re.findall(r'Name: (CVE-\d{4}-\d{4})', txt)
+        res = re.findall(r'Name: (CVE-\d{4}-\d*)', txt)
         return list(set(res))
 
     @staticmethod
@@ -136,7 +134,7 @@ class CVEAggregator:
         return list(map(int, ports))
 
     @staticmethod
-    def __get_script(cve):
+    def __get_scripts(cve):
         """
         Get the testing script address.
         :param cve: the CVE name.
@@ -146,8 +144,14 @@ class CVEAggregator:
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) '
                           'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/11.1 Safari/605.1.15'
         }
-        html = requests.get(GOOGLE_PROXY_URL + '/search?q=' + cve + '%20' + 'site:' + EXPLOIT_DB_URL,
-                            headers=headers).text
+        proxies = {
+            'https': 'https://127.0.0.1:1087',
+            'http': 'http://127.0.0.1:1087'
+        }
+        # html = requests.get(GOOGLE_PROXY_URL + '/search?q=' + cve + '%20' + 'site:' + EXPLOIT_DB_URL,
+        #                     headers=headers).text
+        html = requests.get(GOOGLE_URL + '/search?q=' + cve + '%20' + 'site:' + EXPLOIT_DB_URL, headers=headers,
+                            proxies=proxies).text
         soup = BeautifulSoup(html, 'html.parser')
         sites = soup.find_all('div', class_='g')
         scripts = list()
@@ -169,4 +173,3 @@ if __name__ == '__main__':
     aggregator = CVEAggregator()
     aggregator.set_cves(['CVE-2018-0171'])
     print(json.dumps(aggregator.update_cves()))
-    # print(json.dumps(CVEAggregator.get_script('CVE-2016-0989')))

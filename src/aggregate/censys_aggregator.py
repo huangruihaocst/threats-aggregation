@@ -33,7 +33,7 @@ class CensysAggregator(Aggregator):
         :param page_num: the number of the page, one indexed
         :return: raw data for the result (with metadata)
         """
-        fields = ['ip', 'protocols', 'metadata.os', 'metadata.os_version', 'tags']
+        fields = ['ip', 'protocols', 'tags']
         data = {"query": query.query,
                 "page": page_num,
                 "fields": fields}
