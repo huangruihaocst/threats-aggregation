@@ -113,6 +113,10 @@ class MongoHelper:
         collection.insert_many(threats)
         client.close()
 
+    @staticmethod
+    def read_all_threats():
+        pass
+
 
 if __name__ == '__main__':
     # res = MongoHelper.read_cve_by_year(1999)
