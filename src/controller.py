@@ -6,7 +6,7 @@ from src.aggregate.query import QueryType, Query
 from src.utils.mongo_helper import MongoHelper
 from threading import Thread, Lock, current_thread
 
-CVE_BUFFER_SIZE = 100
+BUFFER_SIZE = 100
 THREADS = 8
 CVE_START_YEAR = 1999
 
@@ -45,6 +45,8 @@ def longest_match(s1: str, s2: str):
     :param s2: string 2
     :return: the length of the longest substring
     """
+    if s1 is None or s2 is None:
+        return 0
     from difflib import SequenceMatcher
     match = SequenceMatcher(None, s1.lower(), s2.lower()).find_longest_match(0, len(s1), 0, len(s2))
     return match.size
@@ -65,41 +67,108 @@ class AggregatorController:
         It must be run in a different thread.
         :return: None
         """
+        # step 1: read queries from file, get the queries
+        self.__read_queries()
+
+        # step 2: read CVE range from file
+        self.__read_cves()
+
+        # step 3: start aggregation
         self.aggregate_hosts()
         self.aggregate_cve_details()
-        self.analyze()
+        AggregatorController.analyze()
 
-    def analyze(self):
+    @staticmethod
+    def analyze():
         """
-        Use threats data and CVE data to analyze which hosts are vulnerability.
+        Use hosts data and CVE data to analyze which hosts are vulnerability.
         Save the result into database.
-        Format: {query0: [{'ip': ip0, 'CVEs': ['name': name0, 'ports': [...], 'apps': [...], 'source': 'CVE Details'], ...}
+        Format: [{'ip': ip0, 'query': query0, 'CVEs': {CVE0: {'ports': [...], 'apps': [...], 'source': 'CVE Details'}, ...]
         :return: None
         """
         import datetime
-        # self.__queries = ['166.111.0.0/21']  # TODO: should be removed
-        all_vulns = dict()
-        # for query in self.__queries:  # each query
-        #     # check if there are vulnerabilities by year
-        #     all_vulns[query] = list()
-        #     for host in MongoHelper.read_hosts_by_query(query):
-        #         for
-        #     for year in range(CVE_START_YEAR, datetime.datetime.now().year + 1):
-        #         cves_cursor = MongoHelper.read_cves_by_year(year)
-        #         for cve in cves_cursor:  # each CVE
-        #             hosts_cursor =
-        #             for host in hosts_cursor:  # each host
-        #                 vuln_ports, vuln_apps = AggregatorController.__is_vulnerable(host, cve)
-        #                 if len(vuln_ports) > 0 or len(vuln_apps) > 0:
-        #                     vulns = dict()
+        from copy import deepcopy
+        read_hosts = MongoHelper.read_all_hosts()
+        hosts = deepcopy(read_hosts)
+        done = 0
+        lock = Lock()
 
+        def get_analyzer():
+            nonlocal hosts, done
 
+            while len(hosts) > 0:
+                lock.acquire()
+                try:
+                    current, hosts = hosts[:BUFFER_SIZE], hosts[BUFFER_SIZE:]
+                finally:
+                    lock.release()
+
+                all_vulns = list()
+                for host in current:
+                    # step 1: initialization
+                    vulns = dict()
+                    vulns['ip'] = host['ip']
+                    vulns['query'] = host['query']
+                    vulns['CVEs'] = dict()
+
+                    # step 2: read the vulnerabilities given by Shodan
+                    shodan_vulns = dict()
+                    if 'data' in host:
+                        for data in host['data']:
+                            if 'vulns' in data:
+                                for vuln in data['vulns']:
+                                    if vuln not in shodan_vulns.keys():
+                                        shodan_vulns[vuln] = data['vulns'][vuln]
+                    if len(shodan_vulns) > 0:
+                        for vuln in shodan_vulns:
+                            shodan_vulns[vuln]['source'] = 'Shodan'
+                        vulns['CVEs'] = shodan_vulns
+
+                    # step 3: use apps and ports to find other vulnerabilities
+                    for year in range(CVE_START_YEAR, datetime.datetime.now().year + 1):
+                        cves = MongoHelper.read_cves_by_year(year)
+                        for cve in cves:
+                            vuln_ports, vuln_apps = AggregatorController.__is_vulnerable(host, cve)
+                            if len(vuln_ports) + len(vuln_apps) > 0:
+                                if cve['name'] not in vulns['CVEs']:
+                                    vuln = dict()
+                                    vuln['ports'] = vuln_ports
+                                    vuln['apps'] = vuln_apps
+                                    vuln['source'] = 'CVE Details'
+                                    vulns['CVEs'][cve['name']] = vuln
+                                else:
+                                    vulns['CVEs'][cve['name']]['ports'] = vuln_ports
+                                    vulns['CVEs'][cve['name']]['apps'] = vuln_apps
+                                    vulns['CVEs'][cve['name']]['source'] = 'Shodan/CVE Details'
+
+                    if len(vulns['CVEs']) > 0:
+                        all_vulns.append(vulns)
+
+                    print(current_thread().name + ' ' + host['ip'] + ' done.')
+
+                # step 4: save to database
+                if len(all_vulns) > 0:
+                    MongoHelper.save_threats(all_vulns)
+                lock.acquire()
+                try:
+                    done += len(all_vulns)
+                    print('>>>>>>> ' + current_thread().name + ' ' + str(done) + ' done.')
+                finally:
+                    lock.release()
+
+        workers = list()
+        for i in range(0, THREADS):
+            worker = Thread(target=get_analyzer)
+            worker.start()
+            workers.append(worker)
+        for worker in workers:
+            worker.join()
 
     @staticmethod
     def __get_host_apps(host):
         """
         Get the apps of a host, including OS, webapp, framework and so on.
-        :param host: the ip address of the host.
+        :param host: host information.
         :return: a list of apps.
         format: [{'name': name0, 'version': version0}, {...}, ...]
         """
@@ -131,7 +200,7 @@ class AggregatorController:
         if 'system' in host and len(host['system']) > 0:
             for system in host['system']:
                 app = dict()
-                app['name'] = system['distrib']
+                app['name'] = system['distrib'] if system['distrib'] is not None else system['name']
                 if 'version' in system:
                     app['version'] = system['version']
                 else:
@@ -146,7 +215,7 @@ class AggregatorController:
     def __get_host_ports(host):
         """
         Get all the open ports of the host.
-        :param host: the ip address of the host.
+        :param host: host information.
         :return: A list of open ports.
         format: [port0, port1, ...]
         """
@@ -154,9 +223,9 @@ class AggregatorController:
         if 'protocols' in host:
             for protocol in host['protocols']:
                 ports.append(int(protocol.split('/')[0]))
-        if 'port' in host:
-            if host['port'] not in ports:
-                ports.append(host['port'])
+        if 'ports' in host:
+            ports += host['ports']
+        ports = list(set(ports))
         return ports
 
     @staticmethod
@@ -176,7 +245,7 @@ class AggregatorController:
 
         # step 3: compare with CVE data
         if len(cve['ports']) == 0 and len(cve['apps']) == 0:
-            return False, list(), list()
+            return list(), list()
         else:
             # condition: (one of the ports) or (one of the apps)
             vuln_ports = list(set(ports).intersection(cve['ports']))
@@ -185,12 +254,24 @@ class AggregatorController:
                 for app in apps:
                     # same app strategy: scoring
                     score = 0
-                    score += longest_match(cve_app['Name'], app['name']) / min(cve_app['Name'], app['name'])
-                    if cve_app['version'] is None or app['version'] is None:
-                        score += 0.5
+                    if not (cve_app['Product'] is None or len(cve_app['Product']) == 0
+                            or app['name'] is None or len(app['name']) == 0):
+                        score += longest_match(cve_app['Product'], app['name']) / len(app['name'])
+                    if cve_app['Version'] is None or len(cve_app['Version']) == 0 \
+                            or app['version'] is None or len(app['version']) == 0:
+                        score += 0.125
                     else:
-                        score += longest_match(cve_app['Version'], app['version']) / cve_app['Version'], app['version']
-                    if score > 1:
+                        import re
+                        cve_app['Version'] = re.sub(r'(.*)|\w*', '', cve_app['Version'])
+                        cve_versions = cve_app['Version'].split('.')
+                        app_versions = app['version'].split('.')
+                        if len(cve_versions) > 0 and len(app_versions) > 0 and cve_versions[0] == app_versions[0]:
+                            score += 0.25
+                            if len(cve_versions) > 1 and len(app_versions) > 1 and cve_versions[1] == app_versions[1]:
+                                score += 0.5
+                                if len(cve_versions) > 2 and len(app_versions) > 2 and cve_versions[2] == app_versions[2]:
+                                    score += 0.75
+                    if score > 0.9 and app not in vuln_apps:
                         vuln_apps.append(app)
             return vuln_ports, vuln_apps
 
@@ -204,10 +285,8 @@ class AggregatorController:
         Aggregate hosts from Censys, Shodan and ZoomEye.
         :return: None
         """
-        # step 1: read queries from file, get the queries
-        self.__read_queries()
 
-        # step 2: initialize query list for aggregator
+        # step 1: initialize query list for aggregator
         censys_aggregator = CensysAggregator()
         censys_aggregator.set_queries(self.__queries)
         shodan_aggregator = ShodanAggregator()
@@ -215,31 +294,19 @@ class AggregatorController:
         zoom_eye_aggregator = ZoomEyeAggregator()
         zoom_eye_aggregator.set_queries(self.__queries)
 
-        # step 3: fetch all
+        # step 2: fetch all
         censys_res = censys_aggregator.fetch_all()
-        # with open('censys.txt', 'r') as f:
-        #     censys_res = json.loads(f.read())
-        # with open('censys.txt', 'w') as f:
-        #     f.write(json.dumps(censys_res))
         print('censys done.')
         shodan_res = shodan_aggregator.fetch_all()
-        # with open('shodan.txt', 'r') as f:
-        #     shodan_res = json.loads(f.read())
-        # with open('shodan.txt', 'w') as f:
-        #     f.write(json.dumps(shodan_res))
         print('shodan done.')
         zoom_eye_res = zoom_eye_aggregator.fetch_all()
-        # with open('zoomeye.txt', 'r') as f:
-        #     zoom_eye_res = json.loads(f.read())
-        # with open('zoomeye.txt', 'w') as f:
-        #     f.write(json.dumps(zoom_eye_res))
         print('zoomeye done.')
 
-        # step 4: merge
+        # step 3: merge
         merged_res = AggregatorController.__merge(censys_res, shodan_res, zoom_eye_res)
         print('merging done.')
 
-        # step 5: save to database
+        # step 4: save to database
         MongoHelper.save_hosts(merged_res)
 
     @staticmethod
@@ -363,12 +430,12 @@ class AggregatorController:
         Aggregate threats from www.cvedetails.com. Incremental Update.
         :return: None
         """
-        # step 1: read CVE range from file and find the difference between data in the local database and the Internet
-        # And then initialize the aggregation queries
-        self.__read_cves()
+
+        # step 1: initialization
         print('total: ' + str(len(self.__cves)))
         from copy import deepcopy
         cves = deepcopy(self.__cves)
+
         # step 2: start aggregation (multi-threaded)
         done = 0
         lock = Lock()
@@ -378,7 +445,7 @@ class AggregatorController:
             while len(cves) > 0:
                 lock.acquire()
                 try:
-                    current, cves = cves[:CVE_BUFFER_SIZE], cves[CVE_BUFFER_SIZE:]
+                    current, cves = cves[:BUFFER_SIZE], cves[BUFFER_SIZE:]
                 finally:
                     lock.release()
                 cve_aggregator = CVEAggregator()
@@ -405,5 +472,6 @@ class AggregatorController:
 if __name__ == '__main__':
     import json
     controller = AggregatorController()
-    controller.aggregate_hosts()
+    AggregatorController.analyze()
+    # controller.aggregate_hosts()
     # controller.aggregate_cve_details()

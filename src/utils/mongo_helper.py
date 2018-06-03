@@ -50,6 +50,19 @@ class MongoHelper:
         return res
 
     @staticmethod
+    def read_all_hosts():
+        """
+        Read all hosts.
+        :return: a list containing all hosts' information
+        """
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[HOSTS_COLLECTION]
+        res = collection.find({})
+        client.close()
+        return list(res)
+
+    @staticmethod
     def save_cves(cves: list):
         """
         Save CVE details into database.
@@ -88,11 +101,17 @@ class MongoHelper:
     @staticmethod
     def save_threats(threats):
         """
-
-        :param threats:
-        :return:
+        Save threats data into database.
+        :param threats: threats information
+        Format: [{'ip': ip0, 'query': query0, 'CVEs': {CVE0: {'ports': [...], 'apps': [...],
+         'source': 'CVE Details'}, ...]
+        :return: None
         """
-        pass
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[THREATS_COLLECTION]
+        collection.insert_many(threats)
+        client.close()
 
 
 if __name__ == '__main__':
