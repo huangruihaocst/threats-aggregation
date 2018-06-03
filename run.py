@@ -1,7 +1,8 @@
-from flask import Flask
+from flask import Flask, request
 from flask import render_template
 
 from src.utils.mongo_helper import MongoHelper
+import json
 
 app = Flask(__name__, static_url_path='/static')
 
@@ -16,6 +17,8 @@ def root(page_num):
 @app.route('/details/<string:ip>')
 def details(ip):
     threat = MongoHelper.read_threat(ip)
+    if threat is None:
+        return render_template('empty.html', title=ip)
     for cve in threat['CVEs']:
         if 'cvss' not in threat['CVEs'][cve] or 'summary' not in threat['CVEs'][cve]:
             cve_info = MongoHelper.read_cve_by_name(cve)
@@ -25,7 +28,30 @@ def details(ip):
             threat['CVEs'][cve].pop('ports')
         if 'apps' in threat['CVEs'][cve] and len(threat['CVEs'][cve]['apps']) == 0:
             threat['CVEs'][cve].pop('apps')
-    return render_template('details.html', threat=threat)
+    original = MongoHelper.read_host_by_ip_and_query(ip, threat['query'])
+    original.pop('_id')
+    return render_template('details.html', threat=threat, original=json.dumps(original, indent=4, sort_keys=True))
+
+
+@app.route('/search', methods=['POST'])
+def search():
+    keyword = request.form['search']
+    # decide it is IP/CVE/Query
+    import re
+    if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', keyword):  # IP
+        return details(keyword)
+    elif re.match(r'^CVE-\d{4}-\d*$', keyword):  # CVE
+        res = MongoHelper.read_threats_by_cve(keyword)
+        if res.count() == 0:
+            return render_template('empty.html', title=keyword)
+        else:
+            return render_template('search.html', title=keyword, threats=list(res))
+    else:  # Query
+        res = MongoHelper.read_threats_by_query(keyword)
+        if res.count() == 0:
+            return render_template('empty.html', title=keyword)
+        else:
+            return render_template('search.html', keyword=keyword)
 
 
 if __name__ == '__main__':

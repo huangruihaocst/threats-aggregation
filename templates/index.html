@@ -21,10 +21,10 @@
     <div class="jumbotron">
         <h1 class="display-4">威胁情报聚合与推送系统</h1>
 
-        <form>
+        <form action="{{ url_for('search') }}" method="post">
             <div class="form-group">
                 <label for="search">搜索</label>
-                <input type="search" id="search" placeholder="请输入关键字、CVE或者IP地址" class="form-control">
+                <input type="search" id="search" name="search" placeholder="请输入关键字、CVE或者IP地址" class="form-control">
                 <small class="form-text text-muted">关键字可以是域名或者IP地址段</small>
             </div>
             <button type="submit" class="btn btn-primary">搜索</button>

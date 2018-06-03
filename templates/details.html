@@ -18,6 +18,15 @@
 
         <cite class="blockquote-footer">query: {{ threat.query }}</cite>
 
+        <details>
+            <summary class="h5">Original:</summary>
+            <div class="pre-scrollable">
+                <pre>{{ original }}</pre>
+            </div>
+        </details>
+
+        <br>
+
         {% for key, value in threat.CVEs.items() %}
             <div>
                 <a class="h3" href="https://www.cvedetails.com/cve/{{ key }}" style="vertical-align: middle">{{ key }}</a>
@@ -26,18 +35,30 @@
             <p class="text-muted">cvss：{{ value.cvss }}</p>
             <p class="lead">{{ value.summary }}</p>
             {% if value.references %}
-                <h5>References:</h5>
-                <div class="pre-scrollable">
-                    {% for reference in value.references %}
-                        <p><a href="{{ reference }}">{{ reference }}</a></p>
-                    {% endfor %}
-                </div>
+                <details>
+                    <summary class="h5">References:</summary>
+                    <div class="pre-scrollable">
+                        {% for reference in value.references %}
+                            <p><a href="{{ reference }}">{{ reference }}</a></p>
+                        {% endfor %}
+                    </div>
+                </details>
             {% endif %}
             {% if value.ports %}
-                {{ value.ports }}
+                <h5>Ports: </h5>
+                <ul>
+                    {% for port in value.ports %}
+                        <li>{{ port }}</li>
+                    {% endfor %}
+                </ul>
             {% endif %}
             {% if value.apps %}
-                {{ value.apps }}
+                <h5>Apps: </h5>
+                <ul>
+                    {% for app in value.apps %}
+                        <li>{{ app.name }}, {{ app.version }}</li>
+                    {% endfor %}
+                </ul>
             {% endif %}
             <br>
         {% endfor %}

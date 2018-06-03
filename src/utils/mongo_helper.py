@@ -53,6 +53,15 @@ class MongoHelper:
         return res
 
     @staticmethod
+    def read_host_by_ip_and_query(ip, query):
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[HOSTS_COLLECTION]
+        res = collection.find({'ip': ip, 'query': query})
+        client.close()
+        return list(res)[0]
+
+    @staticmethod
     def read_all_hosts():
         """
         Read all hosts.
@@ -96,7 +105,7 @@ class MongoHelper:
         collection = db[CVES_COLLECTION]
         res = collection.find({'name': cve})
         client.close()
-        return list(res)[0]
+        return res[0] if res.count() > 0 else None
 
     @staticmethod
     def read_cves_by_year(year):
@@ -141,13 +150,22 @@ class MongoHelper:
         return list(res)
 
     @staticmethod
+    def read_threats_by_query(query):
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[THREATS_COLLECTION]
+        res = collection.find({'query': query})
+        client.close()
+        return res
+
+    @staticmethod
     def read_threat(ip):
         client = MongoClient(DB_HOST, DB_PORT)
         db = client[DB_NAME]
         collection = db[THREATS_COLLECTION]
         res = collection.find({'ip': ip})
         client.close()
-        return res[0]
+        return res[0] if res.count() > 0 else None
 
     @staticmethod
     def get_threats_pages():
@@ -159,6 +177,15 @@ class MongoHelper:
         pages = int(count / PAGE_SIZE) + (1 if count % PAGE_SIZE > 0 else 0)
         client.close()
         return pages
+
+    @staticmethod
+    def read_threats_by_cve(cve):
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[THREATS_COLLECTION]
+        res = collection.find({'CVEs.' + cve: {'$exists': True}})
+        client.close()
+        return res
 
 
 if __name__ == '__main__':
