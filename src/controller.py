@@ -253,10 +253,14 @@ class AggregatorController:
             for cve_app in cve['apps']:
                 for app in apps:
                     # same app strategy: scoring
-                    score = 0
+                    score, pass_score = 0, 0.9
                     if not (cve_app['Product'] is None or len(cve_app['Product']) == 0
                             or app['name'] is None or len(app['name']) == 0):
                         score += longest_match(cve_app['Product'], app['name']) / len(app['name'])
+                    if score > 0.9:  # almost the same app
+                        pass_score = 1.5
+                    elif score < 0.5:
+                        continue  # not even the same app
                     if cve_app['Version'] is None or len(cve_app['Version']) == 0 \
                             or app['version'] is None or len(app['version']) == 0:
                         score += 0.125
@@ -271,7 +275,7 @@ class AggregatorController:
                                 score += 0.5
                                 if len(cve_versions) > 2 and len(app_versions) > 2 and cve_versions[2] == app_versions[2]:
                                     score += 0.75
-                    if score > 0.9 and app not in vuln_apps:
+                    if score > pass_score and app not in vuln_apps:
                         vuln_apps.append(app)
             return vuln_ports, vuln_apps
 

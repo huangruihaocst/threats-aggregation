@@ -7,6 +7,9 @@ DB_NAME = 'threats_db'
 HOSTS_COLLECTION = 'hosts_collection'
 CVES_COLLECTION = 'cves_collection'
 THREATS_COLLECTION = 'threats_collection'
+# THREATS_COLLECTION = 'threats_collection2'
+
+PAGE_SIZE = 10
 
 
 class MongoHelper:
@@ -82,6 +85,20 @@ class MongoHelper:
         client.close()
 
     @staticmethod
+    def read_cve_by_name(cve):
+        """
+        Read CVE information by its name.
+        :param cve: CVE name
+        :return: CVE information
+        """
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[CVES_COLLECTION]
+        res = collection.find({'name': cve})
+        client.close()
+        return list(res)[0]
+
+    @staticmethod
     def read_cves_by_year(year):
         """
         Read CVE data including port and apps information by its year.
@@ -114,13 +131,35 @@ class MongoHelper:
         client.close()
 
     @staticmethod
-    def read_all_threats():
-        pass
+    def read_threats(page_num):
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        # THREATS_COLLECTION = 'threats_collection'
+        collection = db[THREATS_COLLECTION]
+        res = collection.find({}).skip(page_num * PAGE_SIZE).limit(PAGE_SIZE)
+        client.close()
+        return list(res)
+
+    @staticmethod
+    def read_threat(ip):
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[THREATS_COLLECTION]
+        res = collection.find({'ip': ip})
+        client.close()
+        return res[0]
+
+    @staticmethod
+    def get_threats_pages():
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        # THREATS_COLLECTION = 'threats_collection'
+        collection = db[THREATS_COLLECTION]
+        count = collection.find({}).count()
+        pages = int(count / PAGE_SIZE) + (1 if count % PAGE_SIZE > 0 else 0)
+        client.close()
+        return pages
 
 
 if __name__ == '__main__':
-    # res = MongoHelper.read_cve_by_year(1999)
-    # for r in res:
-    #     print(r['name'])
-    # print(res.count())
-    pass
+    print(MongoHelper.read_threat('166.111.30.131'))
