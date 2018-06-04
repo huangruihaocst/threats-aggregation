@@ -106,10 +106,5 @@ class ShodanAggregator(Aggregator):
 
 if __name__ == '__main__':
     import json
-    # s = ShodanAggregator()
-    # queries = [Query('166.111.0.0/16', QueryType.net)]
-    # s.set_queries(queries)
-    # with open('1.txt', 'w') as f:
-    #     f.write(json.dumps(s.fetch_all()))
     print(json.dumps(ShodanAggregator.get_info_by_ip('166.111.53.174')))
 

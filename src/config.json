@@ -11,8 +11,11 @@
     "others": []
   },
   "notification": {
-    "email": [
+    "emails": [
       "huangruihaocst@126.com"
+    ],
+    "CVEs": [
+      "CVE-2018-0171"
     ]
   }
 }

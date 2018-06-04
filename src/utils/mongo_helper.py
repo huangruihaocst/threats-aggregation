@@ -150,6 +150,15 @@ class MongoHelper:
         return list(res)
 
     @staticmethod
+    def get_threats_count():
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[THREATS_COLLECTION]
+        res = collection.find({})
+        client.close()
+        return res.count()
+
+    @staticmethod
     def read_threats_by_query(query):
         client = MongoClient(DB_HOST, DB_PORT)
         db = client[DB_NAME]

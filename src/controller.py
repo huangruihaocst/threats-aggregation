@@ -4,6 +4,7 @@ from src.aggregate.zoomeye_aggregator import ZoomEyeAggregator
 from src.cve_details.cve_details_aggregator import CVEAggregator
 from src.aggregate.query import QueryType, Query
 from src.utils.mongo_helper import MongoHelper
+from src.notification.notifier import Notifier
 from threading import Thread, Lock, current_thread
 import json
 from datetime import datetime
@@ -70,23 +71,37 @@ class Controller:
         It must be run in a different thread.
         :return: None
         """
-        # # step 1: read queries from file, get the queries
-        # self.__read_queries()
-        #
-        # # step 2: read CVE range from file
-        # self.__read_cves()
-        #
-        # print('Initialization done.')
-        #
-        # # step 3: start aggregation
-        # self.aggregate_hosts()
-        # self.aggregate_cve_details()
-        # Controller.analyze()
+        # step 1: read queries from file, get the queries
+        self.__read_queries()
+
+        # step 2: read CVE range from file
+        self.__read_cves()
+
+        print('Initialization done.')
+
+        # step 3: start aggregation
+        self.aggregate_hosts()
+        self.aggregate_cve_details()
+        Controller.analyze()
 
         # step 4: write to last update
         with open('last_updated.txt', 'w') as f:
             now = datetime.now()
             f.write(str(now))
+
+        # step 5: notification
+        notifier = Notifier()
+        total = MongoHelper.get_threats_count()
+        with open('config.json') as f:
+            config = json.loads(f.read())
+            cves = config['notification']['CVEs']
+            specials = list()
+            for cve in cves:
+                special = dict()
+                special['name'] = cve
+                special['count'] = MongoHelper.read_threats_by_cve(cve).count()
+                specials.append(special)
+        notifier.notify(total, specials)
 
     @staticmethod
     def analyze():
@@ -499,15 +514,18 @@ class Controller:
 
 
 if __name__ == '__main__':
-    import time
+    # import time
+    #
+    # def aggregate():
+    #     while True:
+    #         controller = Controller()
+    #         controller.start_aggregate()
+    #         print('all done.')
+    #         time.sleep(UPDATE_CYCLE)
+    #
+    # aggregator = Thread(target=aggregate)
+    # aggregator.start()
+    # aggregator.join()
 
-    def aggregate():
-        while True:
-            controller = Controller()
-            controller.start_aggregate()
-            print('all done.')
-            time.sleep(UPDATE_CYCLE)
-
-    aggregator = Thread(target=aggregate)
-    aggregator.start()
-    aggregator.join()
+    controller = Controller()
+    controller.start_aggregate()
