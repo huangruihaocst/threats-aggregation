@@ -81,8 +81,11 @@ class Controller:
 
         # step 3: start aggregation
         self.aggregate_hosts()
+        print('Aggregating hosts done.')
         self.aggregate_cve_details()
+        print('Aggregating CVEs done.')
         Controller.analyze()
+        print('Analysis done.')
 
         # step 4: write to last update
         with open('last_updated.txt', 'w') as f:
@@ -517,18 +520,8 @@ class Controller:
 
 
 if __name__ == '__main__':
-    # import time
-    #
-    # def aggregate():
-    #     while True:
-    #         controller = Controller()
-    #         controller.start_aggregate()
-    #         print('all done.')
-    #         time.sleep(UPDATE_CYCLE)
-    #
-    # aggregator = Thread(target=aggregate)
-    # aggregator.start()
-    # aggregator.join()
-
-    controller = Controller()
-    controller.start_aggregate()
+    import time
+    while True:
+        controller = Controller()
+        controller.start_aggregate()
+        time.sleep(UPDATE_CYCLE)
