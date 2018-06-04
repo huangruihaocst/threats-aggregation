@@ -113,6 +113,7 @@ class Controller:
         """
         import datetime
         from copy import deepcopy
+        MongoHelper.drop_threats_collection()
         read_hosts = MongoHelper.read_all_hosts()
         hosts = deepcopy(read_hosts)
         done = 0
@@ -344,6 +345,7 @@ class Controller:
         print('merging done.')
 
         # step 4: save to database
+        MongoHelper.drop_hosts_collection()
         MongoHelper.save_hosts(merged_res)
 
     @staticmethod
@@ -477,6 +479,7 @@ class Controller:
 
         # step 1: initialization
         print('total: ' + str(len(self.__cves)))
+        MongoHelper.drop_cves_collection()
         from copy import deepcopy
         cves = deepcopy(self.__cves)
 

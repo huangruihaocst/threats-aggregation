@@ -39,6 +39,30 @@ class MongoHelper:
         client.close()
 
     @staticmethod
+    def drop_hosts_collection():
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[HOSTS_COLLECTION]
+        if collection.count() > 0:
+            collection.drop()
+
+    @staticmethod
+    def drop_cves_collection():
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[CVES_COLLECTION]
+        if collection.count() > 0:
+            collection.drop()
+
+    @staticmethod
+    def drop_threats_collection():
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[THREATS_COLLECTION]
+        if collection.count() > 0:
+            collection.drop()
+
+    @staticmethod
     def read_hosts_by_query(query):
         """
         Read hosts data by its query.
