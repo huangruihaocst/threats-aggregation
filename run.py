@@ -8,10 +8,15 @@ app = Flask(__name__, static_url_path='/static')
 
 
 @app.route('/index/<int:page_num>')
-def root(page_num):
+def index(page_num):
     threats = MongoHelper.read_threats(page_num - 1)  # change to 1 indexed
     pages = MongoHelper.get_threats_pages()
     return render_template('index.html', threats=threats, pages=pages, page_num=page_num)
+
+
+@app.route('/')
+def root():
+    return index(1)
 
 
 @app.route('/details/<string:ip>')
@@ -45,13 +50,13 @@ def search():
         if res.count() == 0:
             return render_template('empty.html', title=keyword)
         else:
-            return render_template('search.html', title=keyword, threats=list(res))
+            return render_template('search.html', title=keyword, threats=list(res), type='CVE')
     else:  # Query
         res = MongoHelper.read_threats_by_query(keyword)
         if res.count() == 0:
             return render_template('empty.html', title=keyword)
         else:
-            return render_template('search.html', keyword=keyword)
+            return render_template('search.html', title=keyword, threats=list(res), type='Query')
 
 
 if __name__ == '__main__':
