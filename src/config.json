@@ -1,0 +1,18 @@
+{
+  "queries": [
+    {"query": "166.111.0.0/16",
+    "type": "net"}
+  ],
+  "CVE": {
+    "years": [
+      2018
+    ],
+    "all": false,
+    "others": []
+  },
+  "notification": {
+    "email": [
+      "huangruihaocst@126.com"
+    ]
+  }
+}

@@ -32,7 +32,11 @@
     </div>
 
     <div>
-        <p class="text-muted text-center">Query: 166.111.0.0/16, 最后更新: xx-xx</p>
+        <p class="text-muted text-center">Query:
+            {% for query in queries %}
+                {{ query }}
+            {% endfor %},
+            最后更新: {{ last_updated }}</p>
     </div>
 
     <div>

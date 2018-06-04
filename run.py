@@ -2,6 +2,7 @@ from flask import Flask, request
 from flask import render_template
 
 from src.utils.mongo_helper import MongoHelper
+from src.controller import Controller
 import json
 
 app = Flask(__name__, static_url_path='/static')
@@ -11,7 +12,15 @@ app = Flask(__name__, static_url_path='/static')
 def index(page_num):
     threats = MongoHelper.read_threats(page_num - 1)  # change to 1 indexed
     pages = MongoHelper.get_threats_pages()
-    return render_template('index.html', threats=threats, pages=pages, page_num=page_num)
+    with open('src/last_updated.txt', 'r') as f:
+        last_updated = f.read()
+    with open('src/config.json') as f:
+        config = json.loads(f.read())
+    queries = list()
+    for query in config['queries']:
+        queries.append(query['query'])
+    return render_template('index.html', threats=threats, pages=pages, page_num=page_num, last_updated=last_updated,
+                           queries=queries)
 
 
 @app.route('/')

@@ -5,10 +5,13 @@ from src.cve_details.cve_details_aggregator import CVEAggregator
 from src.aggregate.query import QueryType, Query
 from src.utils.mongo_helper import MongoHelper
 from threading import Thread, Lock, current_thread
+import json
+from datetime import datetime
 
 BUFFER_SIZE = 100
 THREADS = 8
 CVE_START_YEAR = 1999
+UPDATE_CYCLE = 7 * 24 * 60  # a week
 
 
 def remove_dots(d: dict):
@@ -52,9 +55,9 @@ def longest_match(s1: str, s2: str):
     return match.size
 
 
-class AggregatorController:
+class Controller:
     """
-    The class controls the process of aggregating threats and details of CVEs.
+    The class controls the process of aggregating threats and details of CVEs, and also analysis.
     """
 
     def __init__(self):
@@ -67,16 +70,23 @@ class AggregatorController:
         It must be run in a different thread.
         :return: None
         """
-        # step 1: read queries from file, get the queries
-        self.__read_queries()
+        # # step 1: read queries from file, get the queries
+        # self.__read_queries()
+        #
+        # # step 2: read CVE range from file
+        # self.__read_cves()
+        #
+        # print('Initialization done.')
+        #
+        # # step 3: start aggregation
+        # self.aggregate_hosts()
+        # self.aggregate_cve_details()
+        # Controller.analyze()
 
-        # step 2: read CVE range from file
-        self.__read_cves()
-
-        # step 3: start aggregation
-        self.aggregate_hosts()
-        self.aggregate_cve_details()
-        AggregatorController.analyze()
+        # step 4: write to last update
+        with open('last_updated.txt', 'w') as f:
+            now = datetime.now()
+            f.write(str(now))
 
     @staticmethod
     def analyze():
@@ -128,7 +138,7 @@ class AggregatorController:
                     for year in range(CVE_START_YEAR, datetime.datetime.now().year + 1):
                         cves = MongoHelper.read_cves_by_year(year)
                         for cve in cves:
-                            vuln_ports, vuln_apps = AggregatorController.__is_vulnerable(host, cve)
+                            vuln_ports, vuln_apps = Controller.__is_vulnerable(host, cve)
                             if len(vuln_ports) + len(vuln_apps) > 0:
                                 if cve['name'] not in vulns['CVEs']:
                                     vuln = dict()
@@ -238,10 +248,10 @@ class AggregatorController:
         format: ports: list, apps: list (tuple)
         """
         # step 1: merge app list
-        apps = AggregatorController.__get_host_apps(host)
+        apps = Controller.__get_host_apps(host)
 
         # step 2: merge ports list
-        ports = AggregatorController.__get_host_ports(host)
+        ports = Controller.__get_host_ports(host)
 
         # step 3: compare with CVE data
         if len(cve['ports']) == 0 and len(cve['apps']) == 0:
@@ -280,9 +290,17 @@ class AggregatorController:
             return vuln_ports, vuln_apps
 
     def __read_queries(self):
-        # TODO: read queries from file
-        query = Query('166.111.0.0/16', QueryType.net)
-        self.__queries.append(query)
+        with open('config.json') as f:
+            config = json.loads(f.read())
+        for query in config['queries']:
+            if query['type'] == 'hostname':
+                self.__queries.append(Query(query['query'], QueryType.hostname))
+            elif query['type'] == 'net':
+                self.__queries.append(Query(query['query'], QueryType.net))
+            elif query['type'] == 'ip':
+                self.__queries.append(Query(query['query'], QueryType.ip))
+            else:
+                print('Invalid query type: ' + query['type'])
 
     def aggregate_hosts(self):
         """
@@ -307,7 +325,7 @@ class AggregatorController:
         print('zoomeye done.')
 
         # step 3: merge
-        merged_res = AggregatorController.__merge(censys_res, shodan_res, zoom_eye_res)
+        merged_res = Controller.__merge(censys_res, shodan_res, zoom_eye_res)
         print('merging done.')
 
         # step 4: save to database
@@ -322,7 +340,7 @@ class AggregatorController:
         Format: {query0: [{field0: data0, field1: data1, ...}, {...}], query1: ...}
         """
         assert censys_res.keys() == shodan_res.keys() == zoom_eye_res.keys()
-        merged = AggregatorController.__merge_res(censys_res, shodan_res, zoom_eye_res)
+        merged = Controller.__merge_res(censys_res, shodan_res, zoom_eye_res)
 
         # postprocess
         for query in merged:
@@ -409,8 +427,6 @@ class AggregatorController:
                         merged = dict({**merged, **zoom_eye_additional})
                         merged['source'] = source_saved + '/ZoomEye'
                     merged_res[query].append(merged)
-            with open('mid2.txt', 'w') as f:
-                f.write(json.dumps(merged_res))
             for zoom_eye_host in zoom_eye:  # no corresponding in merged
                 zoom_eye_host['ip'] = zoom_eye_host['ip'][0]
                 zoom_eye_host.pop('geoinfo')
@@ -426,8 +442,17 @@ class AggregatorController:
         return merged_res
 
     def __read_cves(self):
-        # TODO: read from file and database
-        self.__cves = CVEAggregator.get_cve_by_years([2018])
+        with open('config.json') as f:
+            config = json.loads(f.read())
+        if config['CVE']['all']:
+            self.__cves = CVEAggregator.get_all_cve()
+        else:
+            print(config['CVE']['years'])
+            self.__cves = CVEAggregator.get_cve_by_years(config['CVE']['years'])
+            for cve in config['CVE']['others']:
+                self.__cves.append(cve)
+            self.__cves = list(set(self.__cves))
+            print('CVE complete.')
 
     def aggregate_cve_details(self):
         """
@@ -474,8 +499,15 @@ class AggregatorController:
 
 
 if __name__ == '__main__':
-    import json
-    controller = AggregatorController()
-    AggregatorController.analyze()
-    # controller.aggregate_hosts()
-    # controller.aggregate_cve_details()
+    import time
+
+    def aggregate():
+        while True:
+            controller = Controller()
+            controller.start_aggregate()
+            print('all done.')
+            time.sleep(UPDATE_CYCLE)
+
+    aggregator = Thread(target=aggregate)
+    aggregator.start()
+    aggregator.join()
