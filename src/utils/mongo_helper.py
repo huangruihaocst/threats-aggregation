@@ -76,6 +76,15 @@ class MongoHelper:
         return res
 
     @staticmethod
+    def read_host_by_ip(ip):
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[HOSTS_COLLECTION]
+        res = collection.find({'ip': ip})
+        client.close()
+        return list(res)[0]
+
+    @staticmethod
     def read_host_by_ip_and_query(ip, query):
         client = MongoClient(DB_HOST, DB_PORT)
         db = client[DB_NAME]

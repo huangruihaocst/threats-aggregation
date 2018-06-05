@@ -63,7 +63,20 @@ def details(ip):
             threat['CVEs'][cve].pop('apps')
     original = MongoHelper.read_host_by_ip_and_query(ip, threat['query'])
     original.pop('_id')
-    return render_template('details.html', threat=threat, original=json.dumps(original, indent=4, sort_keys=True))
+    services = list()
+    if 'data' in original:
+        for data in original['data']:
+            service = dict()
+            service['raw'] = data
+            found = False
+            for key in data:
+                if isinstance(data[key], dict) and key not in ['location', '_shodan', 'opts', 'vulns']:
+                    service['protocol'] = key
+                    found = True
+            if not found:
+                service['protocol'] = 'Unknown'
+            services.append(service)
+    return render_template('details.html', threat=threat, original=original, services=services)
 
 
 @app.route('/search', methods=['POST'])
@@ -74,17 +87,49 @@ def search():
     if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', keyword):  # IP
         return details(keyword)
     elif re.match(r'^CVE-\d{4}-\d*$', keyword):  # CVE
-        res = MongoHelper.read_threats_by_cve(keyword)
-        if res.count() == 0:
+        res = list(MongoHelper.read_threats_by_cve(keyword))
+        if len(res) == 0:
             return render_template('empty.html', title=keyword)
         else:
-            return render_template('search.html', title=keyword, threats=list(res), type='CVE')
+            for threat in res:
+                threat['original'] = MongoHelper.read_host_by_ip_and_query(threat['ip'], threat['query'])
+                threat['original']['protocols'] = list()
+                if 'data' in threat['original']:
+                    for data in threat['original']['data']:
+                        found = False
+                        for key in data:
+                            if isinstance(data[key], dict) and key not in ['location', '_shodan', 'opts', 'vulns']:
+                                threat['original']['protocols'].append(str(data['port']) + '/' + key)
+                                found = True
+                        if not found:
+                            threat['original']['protocols'].append(str(data['port']) + '/' + 'Unknown')
+            return render_template('search.html', title=keyword, threats=res, type='CVE')
     else:  # Query
-        res = MongoHelper.read_threats_by_query(keyword)
-        if res.count() == 0:
+        res = list(MongoHelper.read_threats_by_query(keyword))
+        if len(res) == 0:
             return render_template('empty.html', title=keyword)
         else:
-            return render_template('search.html', title=keyword, threats=list(res), type='Query')
+            for threat in res:
+                threat['original'] = MongoHelper.read_host_by_ip_and_query(threat['ip'], threat['query'])
+                threat['original']['protocols'] = list()
+                if 'data' in threat['original']:
+                    for data in threat['original']['data']:
+                        found = False
+                        for key in data:
+                            if isinstance(data[key], dict) and key not in ['location', '_shodan', 'opts', 'vulns']:
+                                threat['original']['protocols'].append(str(data['port']) + '/' + key)
+                                found = True
+                        if not found:
+                            threat['original']['protocols'].append(str(data['port']) + '/' + 'Unknown')
+            return render_template('search.html', title=keyword, threats=res, type='Query')
+
+
+@app.route('/raw/<string:ip>')
+def raw(ip):
+    ip = ip.split('&')[0]
+    raw_data = MongoHelper.read_host_by_ip(ip)
+    raw_data.pop('_id')
+    return render_template('raw.html', ip=ip, raw=json.dumps(raw_data, indent=4, sort_keys=True))
 
 
 if __name__ == '__main__':

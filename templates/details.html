@@ -14,54 +14,131 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js" integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T" crossorigin="anonymous"></script>
 
     <div class="container">
-        <h1 class="display-2">{{ threat.ip }}</h1>
+        <span class="display-2">{{ threat.ip }}</span>
+        <a href="/raw/{{ threat.ip }}">
+            <span class="text-muted" style="color: gray; font-size: small">
+                查看原始数据
+            </span>
+        </a>
 
-        <cite class="blockquote-footer">query: {{ threat.query }}</cite>
-
-        <details>
-            <summary class="h5">Original:</summary>
-            <div class="pre-scrollable">
-                <pre>{{ original }}</pre>
-            </div>
-        </details>
+        <p class="text-muted" style="font-size: small;">query: {{ threat.query }}</p>
 
         <br>
 
-        {% for key, value in threat.CVEs.items() %}
-            <div>
-                <a class="h3" href="https://www.cvedetails.com/cve/{{ key }}" style="vertical-align: middle">{{ key }}</a>
-                <span class="h3 badge badge-secondary" style="top: 50%">{{ value.source }}</span>
-            </div>
-            <p class="text-muted">cvss：{{ value.cvss }}</p>
-            <p class="lead">{{ value.summary }}</p>
-            {% if value.references %}
-                <details>
-                    <summary class="h5">References:</summary>
-                    <div class="pre-scrollable">
-                        {% for reference in value.references %}
-                            <p><a href="{{ reference }}">{{ reference }}</a></p>
+        <div class="row">
+            <div class="col">
+                <dl class="row">
+                    <dt class="col-sm-3">城市</dt>
+                    {% if original.city %}
+                        <dd class="col-sm-9">{{ original.city }}</dd>
+                    {% endif %}
+
+                    <dt class="col-sm-3">国家</dt>
+                    {% if original.country_name %}
+                        <dd class="col-sm-9">{{ original.country_name }}</dd>
+                    {% endif %}
+
+                    <dt class="col-sm-3">组织</dt>
+                    {% if original.org %}
+                        <dd class="col-sm-9">{{ original.org }}</dd>
+                    {% endif %}
+
+                    <dt class="col-sm-3">ISP</dt>
+                    {% if original.isp %}
+                        <dd class="col-sm-9">{{ original.isp }}</dd>
+                    {% endif %}
+
+                    <dt class="col-sm-3">最后更新</dt>
+                    {% if original.last_update %}
+                        <dd class="col-sm-9">{{ original.last_update }}</dd>
+                    {% endif %}
+
+                    <dt class="col-sm-3">ASN</dt>
+                    {% if original.asn %}
+                        <dd class="col-sm-9">{{ original.asn }}</dd>
+                    {% endif %}
+                </dl>
+
+                {% for key, value in threat.CVEs.items() %}
+                <div>
+                    <a class="h3" href="https://www.cvedetails.com/cve/{{ key }}" style="vertical-align: middle">{{ key }}</a>
+                    <span class="h3 badge badge-secondary" style="top: 50%">{{ value.source }}</span>
+                </div>
+                <p class="text-muted">cvss：{{ value.cvss }}</p>
+                <p class="lead">{{ value.summary }}</p>
+                {% if value.references %}
+                    <details>
+                        <summary class="h5">References:</summary>
+                        <div class="pre-scrollable">
+                            {% for reference in value.references %}
+                                <p><a href="{{ reference }}">{{ reference }}</a></p>
+                            {% endfor %}
+                        </div>
+                    </details>
+                {% endif %}
+                {% if value.ports %}
+                    <h5>Ports: </h5>
+                    <ul>
+                        {% for port in value.ports %}
+                            <li>{{ port }}</li>
                         {% endfor %}
+                    </ul>
+                {% endif %}
+                {% if value.apps %}
+                    <h5>Apps: </h5>
+                    <ul>
+                        {% for app in value.apps %}
+                            <li>{{ app.name }}, {{ app.version }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                <br>
+                {% endfor %}
+            </div>
+            <div class="col">
+                <h4>端口</h4>
+                <ul class="list-inline">
+                    {% for port in original.ports %}
+                        <li class="list-inline-item text-monospace mini-box"><a href="#{{ port }}">{{ port }}</a></li>
+                    {% endfor %}
+                </ul>
+                <h4>服务</h4>
+                {% for service in services %}
+                    <div class="container">
+                        <div class="row section-box">
+                            <div class="col-sm-4">
+                                <ul style="list-style-type: none;">
+                                    <li style="background-color: aqua; text-align: center">
+                                        <span style="color: white">{{ service.raw.port }}</span>
+                                    </li>
+                                    <li style="background-color: orange; text-align: center">
+                                        <span style="color: white">{{ service.raw.transport }}</span>
+                                    </li>
+                                    <li style="background-color: black; text-align: center">
+                                        <span style="color: white">{{ service.protocol }}</span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="col-sm-8">
+                                {% if service.raw.product %}
+                                    <span class="h5">{{ service.raw.product }}</span>
+                                    {% if service.raw.version %}
+                                        <span class="text-muted" style="font-size: 10pt">Version: {{ service.raw.version }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="h5">Unknown Product</span>
+                                {% endif %}
+                                <hr>
+                                {{ service.raw.data }}
+                            </div>
+                        </div>
                     </div>
-                </details>
-            {% endif %}
-            {% if value.ports %}
-                <h5>Ports: </h5>
-                <ul>
-                    {% for port in value.ports %}
-                        <li>{{ port }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-            {% if value.apps %}
-                <h5>Apps: </h5>
-                <ul>
-                    {% for app in value.apps %}
-                        <li>{{ app.name }}, {{ app.version }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-            <br>
-        {% endfor %}
+                    <hr>
+                {% endfor %}
+            </div>
+        </div>
+
+
     </div>
 
 </body>
