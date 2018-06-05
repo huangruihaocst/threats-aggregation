@@ -13,6 +13,8 @@ BUFFER_SIZE = 100
 THREADS = 8
 CVE_START_YEAR = 1999
 UPDATE_CYCLE = 7 * 24 * 60  # a week
+IGNORE_PORTS = [80, 443]
+CVSS_THRESHOLD = 8
 
 
 def remove_dots(d: dict):
@@ -146,7 +148,8 @@ class Controller:
                         for data in host['data']:
                             if 'vulns' in data:
                                 for vuln in data['vulns']:
-                                    if vuln not in shodan_vulns.keys():
+                                    if vuln not in shodan_vulns.keys() \
+                                            and float(data['vulns'][vuln]['cvss']) >= CVSS_THRESHOLD:
                                         shodan_vulns[vuln] = data['vulns'][vuln]
                     if len(shodan_vulns) > 0:
                         for vuln in shodan_vulns:
@@ -157,6 +160,8 @@ class Controller:
                     for year in range(CVE_START_YEAR, datetime.datetime.now().year + 1):
                         cves = MongoHelper.read_cves_by_year(year)
                         for cve in cves:
+                            if cve['cvss'] < CVSS_THRESHOLD:
+                                continue
                             vuln_ports, vuln_apps = Controller.__is_vulnerable(host, cve)
                             if len(vuln_ports) + len(vuln_apps) > 0:
                                 if cve['name'] not in vulns['CVEs']:
@@ -278,6 +283,9 @@ class Controller:
         else:
             # condition: (one of the ports) or (one of the apps)
             vuln_ports = list(set(ports).intersection(cve['ports']))
+            for port in IGNORE_PORTS:
+                if port in vuln_ports:
+                    vuln_ports.remove(port)
             vuln_apps = list()
             for cve_app in cve['apps']:
                 for app in apps:
@@ -285,8 +293,9 @@ class Controller:
                     score, pass_score = 0, 0.9
                     if not (cve_app['Product'] is None or len(cve_app['Product']) == 0
                             or app['name'] is None or len(app['name']) == 0):
-                        score += longest_match(cve_app['Product'], app['name']) / len(app['name'])
-                    if score > 0.9:  # almost the same app
+                        score += longest_match(cve_app['Product'], app['name']) \
+                                 / (len(app['name']) + len(cve_app['Product']) / 2)
+                    if score > 0.75:  # almost the same app
                         pass_score = 1.5
                     elif score < 0.5:
                         continue  # not even the same app
@@ -295,7 +304,7 @@ class Controller:
                         score += 0.125
                     else:
                         import re
-                        cve_app['Version'] = re.sub(r'(.*)|\w*', '', cve_app['Version'])
+                        cve_app['Version'] = re.sub(r'^[\d.]', '', cve_app['Version'])
                         cve_versions = cve_app['Version'].split('.')
                         app_versions = app['version'].split('.')
                         if len(cve_versions) > 0 and len(app_versions) > 0 and cve_versions[0] == app_versions[0]:
@@ -520,8 +529,10 @@ class Controller:
 
 
 if __name__ == '__main__':
-    import time
-    while True:
-        controller = Controller()
-        controller.start_aggregate()
-        time.sleep(UPDATE_CYCLE)
+    # import time
+    # while True:
+    #     controller = Controller()
+    #     controller.start_aggregate()
+    #     time.sleep(UPDATE_CYCLE)
+    controller = Controller()
+    controller.analyze()

@@ -57,13 +57,47 @@
 
         <div>
             <a href="/details/{{ threat.ip }}" class="h1">{{ threat.ip }}</a>
-            <cite class="blockquote-footer">query: {{ threat.query }}</cite>
-            <p>
-            {% for cve in threat.CVEs %}
-                {{ cve }}
-            {% endfor %}
-            </p>
+            <div class="row">
+                <div class="col">
+                    <p class="text-muted" style="font-size: small; margin-bottom: 0">query: {{ threat.query }}</p>
+                    {% if threat.original.isp %}
+                        <p class="font-weight-bold" style="margin-bottom: 0">{{ threat.original.isp }}</p>
+                    {% endif %}
+                    {% if threat.original.last_update %}
+                        <p class="text-muted" style="font-size: small; margin-bottom: 0">Last Updated On: {{ threat.original.last_update }}</p>
+                    {% endif %}
+                    <p class="font-weight-light" style="font-size: small;">
+                        {% if threat.original.city %}
+                            <span>{{ threat.original.city }}</span>
+                            {% if threat.original.country_name %}, {% endif %}
+                        {% endif %}
+                        {% if threat.original.country_name %}
+                            <span>{{ threat.original.country_name }}</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-6">
+                    <p class="text-monospace">
+                        主要威胁:
+                        {% for cve in threat.CVEs %}
+                            <a href="https://www.cvedetails.com/cve/{{ cve }}">{{ cve }}</a>
+                        {% endfor %}
+                        {% if threat.over %}
+                            ...
+                        {% endif %}
+                    </p>
+                    <p class="text-monospace">
+                        运行服务：
+                        {% for protocol in threat.original.protocols %}
+                            {{ protocol }}
+                        {% endfor %}
+                    </p>
+                </div>
+            </div>
         </div>
+
+        <br>
+        <hr>
 
     {% endfor %}
 

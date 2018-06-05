@@ -2,16 +2,35 @@ from flask import Flask, request
 from flask import render_template
 
 from src.utils.mongo_helper import MongoHelper
-from src.controller import Controller
 import json
 
 app = Flask(__name__, static_url_path='/static')
+CVE_COUNT = 3
 
 
 @app.route('/index/<int:page_num>')
 def index(page_num):
     threats = MongoHelper.read_threats(page_num - 1)  # change to 1 indexed
     pages = MongoHelper.get_threats_pages()
+    for threat in threats:
+        threat['original'] = MongoHelper.read_host_by_ip_and_query(threat['ip'], threat['query'])
+        threat['original']['protocols'] = list()
+        if 'data' in threat['original']:
+            for data in threat['original']['data']:
+                found = False
+                for key in data:
+                    if isinstance(data[key], dict) and key not in ['location', '_shodan', 'opts', 'vulns']:
+                        threat['original']['protocols'].append(str(data['port']) + '/' + key)
+                        found = True
+                if not found:
+                    threat['original']['protocols'].append(str(data['port']) + '/' + 'Unknown')
+    for threat in threats:
+        if len(threat['CVEs']) > CVE_COUNT:
+            threat['over'] = True
+        else:
+            threat['over'] = False
+        threat['CVEs'] = list(threat['CVEs'].keys())
+        threat['CVEs'] = threat['CVEs'][:CVE_COUNT]
     with open('src/last_updated.txt', 'r') as f:
         last_updated = f.read()
     with open('src/config.json') as f:

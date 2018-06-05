@@ -7,7 +7,6 @@ DB_NAME = 'threats_db'
 HOSTS_COLLECTION = 'hosts_collection'
 CVES_COLLECTION = 'cves_collection'
 THREATS_COLLECTION = 'threats_collection'
-# THREATS_COLLECTION = 'threats_collection2'
 
 PAGE_SIZE = 10
 
@@ -167,7 +166,6 @@ class MongoHelper:
     def read_threats(page_num):
         client = MongoClient(DB_HOST, DB_PORT)
         db = client[DB_NAME]
-        # THREATS_COLLECTION = 'threats_collection'
         collection = db[THREATS_COLLECTION]
         res = collection.find({}).skip(page_num * PAGE_SIZE).limit(PAGE_SIZE)
         client.close()
@@ -204,7 +202,6 @@ class MongoHelper:
     def get_threats_pages():
         client = MongoClient(DB_HOST, DB_PORT)
         db = client[DB_NAME]
-        # THREATS_COLLECTION = 'threats_collection'
         collection = db[THREATS_COLLECTION]
         count = collection.find({}).count()
         pages = int(count / PAGE_SIZE) + (1 if count % PAGE_SIZE > 0 else 0)
@@ -222,4 +219,4 @@ class MongoHelper:
 
 
 if __name__ == '__main__':
-    print(MongoHelper.read_threat('166.111.30.131'))
+    print(MongoHelper.read_threats(0))
