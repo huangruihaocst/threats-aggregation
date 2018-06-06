@@ -107,8 +107,8 @@ pyvenv.cfg
 .mypy_cache/
 
 # database
-.db
-/database
+#.db
+#/database
 
 # txt
 *.txt
