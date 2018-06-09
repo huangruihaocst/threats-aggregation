@@ -85,6 +85,15 @@ class MongoHelper:
         return list(res)[0]
 
     @staticmethod
+    def read_all_hosts():
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[HOSTS_COLLECTION]
+        res = collection.find({})
+        client.close()
+        return res
+
+    @staticmethod
     def read_host_by_ip_and_query(ip, query):
         client = MongoClient(DB_HOST, DB_PORT)
         db = client[DB_NAME]
@@ -195,6 +204,15 @@ class MongoHelper:
         db = client[DB_NAME]
         collection = db[THREATS_COLLECTION]
         res = collection.find({'query': query})
+        client.close()
+        return res
+
+    @staticmethod
+    def read_all_threats():
+        client = MongoClient(DB_HOST, DB_PORT)
+        db = client[DB_NAME]
+        collection = db[THREATS_COLLECTION]
+        res = collection.find({})
         client.close()
         return res
 

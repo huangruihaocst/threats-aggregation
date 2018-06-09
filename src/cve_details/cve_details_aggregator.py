@@ -28,7 +28,7 @@ class CVEAggregator:
         Update all the CVEs.
         :return: the information of all CVEs.
         """
-        all_cve = self.get_all_cve()
+        all_cve = self.get_all_cves()
         self.__cves = all_cve
         return self.update_cves()
 
@@ -58,7 +58,7 @@ class CVEAggregator:
         return all_data
 
     @staticmethod
-    def get_all_cve():
+    def get_all_cves():
         """
         Get the name of all the CVEs.
         :return: a list of CVE names.
@@ -68,13 +68,13 @@ class CVEAggregator:
         return list(set(res))
 
     @staticmethod
-    def get_cve_by_years(years: list):
+    def get_cves_by_years(years: list):
         """
         Get the name of all the CVEs within the specified years.
         :param years: a list of years.
         :return: a list of CVE names.
         """
-        all_cve = CVEAggregator.get_all_cve()
+        all_cve = CVEAggregator.get_all_cves()
         res_cve = list()
         for cve in all_cve:
             year = cve.split('-')[1]

@@ -132,5 +132,12 @@ def raw(ip):
     return render_template('raw.html', ip=ip, raw=json.dumps(raw_data, indent=4, sort_keys=True))
 
 
+@app.route('/statistics')
+def statistics():
+    with open('src/statistics.json', 'r') as f:
+        _statistics = json.loads(f.read())
+    return render_template('statistics.html', statistics=_statistics)
+
+
 if __name__ == '__main__':
     app.run()

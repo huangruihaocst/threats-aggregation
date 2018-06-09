@@ -12,9 +12,10 @@ from datetime import datetime
 BUFFER_SIZE = 100
 THREADS = 8
 CVE_START_YEAR = 1999
-UPDATE_CYCLE = 7 * 24 * 60  # a week
+UPDATE_CYCLE = 7 * 24 * 60 * 60  # a week
 IGNORE_PORTS = [80, 443]
 CVSS_THRESHOLD = 8
+STATISTIC_COUNT = 5
 
 
 def remove_dots(d: dict):
@@ -107,6 +108,9 @@ class Controller:
                 special['count'] = MongoHelper.read_threats_by_cve(cve).count()
                 specials.append(special)
         notifier.notify(total, specials)
+
+        # step 6: statistics
+        Controller.calculate_statistics()
 
     @staticmethod
     def analyze():
@@ -474,10 +478,10 @@ class Controller:
         with open('config.json') as f:
             config = json.loads(f.read())
         if config['CVE']['all']:
-            self.__cves = CVEAggregator.get_all_cve()
+            self.__cves = CVEAggregator.get_all_cves()
         else:
             print(config['CVE']['years'])
-            self.__cves = CVEAggregator.get_cve_by_years(config['CVE']['years'])
+            self.__cves = CVEAggregator.get_cves_by_years(config['CVE']['years'])
             for cve in config['CVE']['others']:
                 self.__cves.append(cve)
             self.__cves = list(set(self.__cves))
@@ -527,12 +531,81 @@ class Controller:
         for worker in workers:
             worker.join()
 
+    @staticmethod
+    def calculate_statistics():
+        statistics = dict()
+        # ports
+        hosts = MongoHelper.read_all_hosts()
+        ports = dict()
+        for host in hosts:
+            current_ports = Controller.__get_host_ports(host)
+            for port in current_ports:
+                if str(port) in ports:
+                    ports[str(port)] += 1
+                else:
+                    ports[str(port)] = 1
+        count = 0
+        max_ports = dict()
+        for key, value in sorted(ports.items(), key=lambda kv: (kv[1], kv[0]), reverse=True):
+            if count < STATISTIC_COUNT:
+                max_ports[str(key)] = value
+                count += 1
+            else:
+                break
+        statistics['ports'] = max_ports
+
+        # services
+        services = dict()
+        for host in hosts:
+            current_services = set()
+            if 'data' in host:
+                for data in host['data']:
+                    for key in data:
+                        if isinstance(data[key], dict) and key not in ['location', '_shodan', 'opts', 'vulns']:
+                            current_services.add(key)
+                for service in current_services:
+                    if service in services:
+                        services[service] += 1
+                    else:
+                        services[service] = 1
+        max_services = dict()
+        count = 0
+        for key, value in sorted(services.items(), key=lambda kv: (kv[1], kv[0]), reverse=True):
+            if count < STATISTIC_COUNT:
+                max_services[str(key)] = value
+                count += 1
+            else:
+                break
+        statistics['services'] = max_services
+
+        # CVE
+        cves = dict()
+        threats = MongoHelper.read_all_threats()
+        for threat in threats:
+            for cve in threat['CVEs']:
+                if cve in cves:
+                    cves[cve] += 1
+                else:
+                    cves[cve] = 1
+        count = 0
+        max_cves = dict()
+        for key, value in sorted(cves.items(), key=lambda kv: (kv[1], kv[0]), reverse=True):
+            if count < STATISTIC_COUNT:
+                max_cves[str(key)] = value
+                count += 1
+            else:
+                break
+        statistics['CVEs'] = max_cves
+
+        with open('statistics.json', 'w') as f:
+            f.write(json.dumps(statistics))
+
 
 if __name__ == '__main__':
-    # import time
-    # while True:
-    #     controller = Controller()
-    #     controller.start_aggregate()
-    #     time.sleep(UPDATE_CYCLE)
-    controller = Controller()
-    controller.analyze()
+    import time
+    while True:
+        controller = Controller()
+        controller.start_aggregate()
+        time.sleep(UPDATE_CYCLE)
+    # controller = Controller()
+    # controller.start_aggregate()
