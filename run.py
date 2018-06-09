@@ -136,7 +136,11 @@ def raw(ip):
 def statistics():
     with open('src/statistics.json', 'r') as f:
         _statistics = json.loads(f.read())
-    return render_template('statistics.html', statistics=_statistics)
+    ports_keys = _statistics['ports'].keys()
+    services_keys = _statistics['services'].keys()
+    cves_keys = _statistics['CVEs'].keys()
+    return render_template('statistics.html', statistics=_statistics,
+                           ports_keys=ports_keys, services_keys=services_keys, cves_keys=cves_keys)
 
 
 if __name__ == '__main__':

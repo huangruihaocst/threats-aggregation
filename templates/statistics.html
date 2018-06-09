@@ -19,9 +19,9 @@
         <div>
             <h3>端口</h3>
             <dl class="row">
-                {% for key, value in statistics.ports.items() %}
-                    <dt class="col-sm-3">{{ key }}</dt>
-                    <dd class="col-sm-9">{{ value }}</dd>
+                {% for port in ports_keys %}
+                    <dt class="col-sm-3">{{ port }}</dt>
+                    <dd class="col-sm-9">{{ statistics.ports[port] }}</dd>
                 {% endfor %}
             </dl>
         </div>
@@ -31,9 +31,9 @@
         <div>
             <h3>服务</h3>
             <dl class="row">
-                {% for key, value in statistics.services.items() %}
-                    <dt class="col-sm-3">{{ key }}</dt>
-                    <dd class="col-sm-9">{{ value }}</dd>
+                {% for service in services_keys %}
+                    <dt class="col-sm-3">{{ service }}</dt>
+                    <dd class="col-sm-9">{{ statistics.services[service] }}</dd>
                 {% endfor %}
             </dl>
         </div>
@@ -43,9 +43,9 @@
         <div>
             <h3>CVE</h3>
             <dl class="row">
-                {% for key, value in statistics.CVEs.items() %}
-                    <dt class="col-sm-3"><a href="https://www.cvedetails.com/cve/{{ key }}">{{ key }}</a></dt>
-                    <dd class="col-sm-9">{{ value }}</dd>
+                {% for cve in cves_keys %}
+                    <dt class="col-sm-3"><a href="https://www.cvedetails.com/cve/{{ cve }}">{{ cve }}</a></dt>
+                    <dd class="col-sm-9">{{ statistics.CVEs[cve] }}</dd>
                 {% endfor %}
             </dl>
         </div>
