@@ -136,16 +136,7 @@ def raw(ip):
 def statistics():
     with open('src/statistics.json', 'r') as f:
         _statistics = json.loads(f.read())
-    ports = dict()
-    services = dict()
-    cves = dict()
-    for key, value in sorted(_statistics['ports'].items(), key=lambda kv: (kv[1], kv[0]), reverse=True):
-        ports[key] = value
-    for key, value in sorted(_statistics['services'].items(), key=lambda kv: (kv[1], kv[0]), reverse=True):
-        services[key] = value
-    for key, value in sorted(_statistics['CVEs'].items(), key=lambda kv: (kv[1], kv[0]), reverse=True):
-        cves[key] = value
-    return render_template('statistics.html', ports=ports, services=services, cves=cves)
+    return render_template('statistics.html', statistics=_statistics)
 
 
 if __name__ == '__main__':

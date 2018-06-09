@@ -19,7 +19,7 @@
         <div>
             <h3>端口</h3>
             <dl class="row">
-                {% for key, value in ports.items() %}
+                {% for key, value in statistics.ports|dictsort(False, 'value', reverse=True) %}
                     <dt class="col-sm-3">{{ key }}</dt>
                     <dd class="col-sm-9">{{ value }}</dd>
                 {% endfor %}
@@ -31,7 +31,7 @@
         <div>
             <h3>服务</h3>
             <dl class="row">
-                {% for key, value in services.items() %}
+                {% for key, value in statistics.services|dictsort(False, 'value', reverse=True) %}
                     <dt class="col-sm-3">{{ key }}</dt>
                     <dd class="col-sm-9">{{ value }}</dd>
                 {% endfor %}
@@ -43,7 +43,7 @@
         <div>
             <h3>CVE</h3>
             <dl class="row">
-                {% for key, value in cves.items() %}
+                {% for key, value in statistics.CVEs|dictsort(False, 'value', reverse=True) %}
                     <dt class="col-sm-3"><a href="https://www.cvedetails.com/cve/{{ key }}">{{ key }}</a></dt>
                     <dd class="col-sm-9">{{ value }}</dd>
                 {% endfor %}
