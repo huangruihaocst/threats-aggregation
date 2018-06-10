@@ -1,0 +1,86 @@
+\begin{thebibliography}{13}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{#1}
+\providecommand{\href}[2]{\url{#2}}
+\providecommand{\doi}[1]{DOI: \href{https://doi.org/#1}{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax\relax\else
+  \urlstyle{same}\fi
+
+\bibitem[Ehrenfeld(2017)]{ehrenfeld2017wannacry}
+Ehrenfeld J~M.
+\newblock Wannacry, cybersecurity and health information technology: A time to
+  act\allowbreak[J].
+\newblock Journal of medical systems, 2017, 41\penalty0 (7): 104.
+
+\bibitem[O'Gorman\ et~al.(2011)O'Gorman, Kearns, and Aharoni]{o2011metasploit}
+O'Gorman J, Kearns D, Aharoni M.
+\newblock Metasploit: the penetration tester's guide\allowbreak[M].
+\newblock [S.l.]: No Starch Press, 2011
+
+\bibitem[Damele\ et~al.(2012)Damele and Stampar]{damele2012sqlmap}
+Damele B, Stampar M.
+\newblock Sqlmap\allowbreak[J].
+\newblock Online at http://sqlmap. org, 2012.
+
+\bibitem[Thacker\ et~al.(2006)Thacker, Riha, Fitch, Huyse, and
+  Pleming]{thacker2006probabilistic}
+Thacker B~H, Riha D~S, Fitch S~H, et~al.
+\newblock Probabilistic engineering analysis using the nessus
+  software\allowbreak[J].
+\newblock Structural Safety, 2006, 28\penalty0 (1-2): 83-107.
+
+\bibitem[Lyon(2009)]{lyon2009nmap}
+Lyon G~F.
+\newblock Nmap network scanning: The official nmap project guide to network
+  discovery and security scanning\allowbreak[M].
+\newblock [S.l.]: Insecure, 2009
+
+\bibitem[Durumeric\ et~al.(2015)Durumeric, Adrian, Mirian, Bailey, and
+  Halderman]{durumeric2015search}
+Durumeric Z, Adrian D, Mirian A, et~al.
+\newblock A search engine backed by internet-wide
+  scanning\allowbreak[C]//\allowbreak{}Proceedings of the 22nd ACM SIGSAC
+  Conference on Computer and Communications Security.
+\newblock [S.l.]: ACM, 2015: 542-553.
+
+\bibitem[Wiemer(2001)]{wiemer2001software}
+Wiemer S.
+\newblock A software package to analyze seismicity: Zmap\allowbreak[J].
+\newblock Seismological Research Letters, 2001, 72\penalty0 (3): 373-382.
+
+\bibitem[Matherly(2009)]{matherly2009shodan}
+Matherly J~C.
+\newblock Shodan the computer search engine\allowbreak[J].
+\newblock Available at [Online]: http://www. shodanhq. com/help, 2009.
+
+\bibitem[Singh(2015)]{singh2015breaking}
+Singh S.
+\newblock Breaking the sandbox. exploit-db. com\allowbreak[Z].
+\newblock [S.l.: s.n.], 2015.
+
+\bibitem[Mell\ et~al.(2007)Mell, Scarfone, and Romanosky]{mell2007complete}
+Mell P, Scarfone K, Romanosky S.
+\newblock A complete guide to the common vulnerability scoring system version
+  2.0\allowbreak[C]//\allowbreak{}Published by FIRST-Forum of Incident Response
+  and Security Teams: volume~1.
+\newblock [S.l.: s.n.], 2007: 23.
+
+\bibitem[Grinberg(2018)]{grinberg2018flask}
+Grinberg M.
+\newblock Flask web development: developing web applications with
+  python\allowbreak[M].
+\newblock [S.l.]: " O'Reilly Media, Inc.", 2018
+
+\bibitem[Chodorow(2013)]{chodorow2013mongodb}
+Chodorow K.
+\newblock Mongodb: The definitive guide: Powerful and scalable data
+  storage\allowbreak[M].
+\newblock [S.l.]: " O'Reilly Media, Inc.", 2013
+
+\bibitem[薛瑞尼(2017)]{thuthesis}
+薛瑞尼.
+\newblock \thuthesis: 清华大学学位论文模板\allowbreak[EB/OL].
+\newblock 2017.
+\newblock \url{https://github.com/xueruini/thuthesis}.
+
+\end{thebibliography}
