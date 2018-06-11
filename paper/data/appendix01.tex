@@ -164,14 +164,15 @@ ZGrab产生关于每个主机的结构化数据。
 
 我们鼓励研究人员（和终端用户）贡献新类型的设备和漏洞注释。我们将在GitHub（http://github.com/zmap/ztag）
 上托管我们的注释库和我们的转换和模式，作为一个独立的开源项目，ZTag。我们注意到，当ZTag与ZMap和ZGrab配合使用时，
-研究人员可以独立重现Censys的数据处理流水线并产生相同的数据（图~\ref{fig:annotation}）。
+研究人员可以独立重现Censys的数据处理流水线并产生相同的数据（图~\ref{fig:fig:protocol}）。
 
 \begin{figure}[H]
   \centering
-  \includegraphics[scale=0.8]{annotation.png}
-  \caption{{\heiti Dell iDRAC标注} - Censys支持社区维护标注 – 简单的Python函数 – 就能为记录附加额外的元数据和标签。
-  在这里，我们展示了Dell iDRAC远程管理卡的标签。}
-  \label{fig:annotation}
+  \includegraphics[scale=0.8]{protocol-scan.png}
+  \caption{{\heiti 协议扫描和注释} - 每个扫描器使用ZMap执行一小部分的IPv4地址主机发现，并使用可插拔的应用程序扫描器完成协议握手。
+  Censys用额外的元数据根据兴趣和注释记录提取字段。来自协议握手的信息被转换为一个原子信息 – 
+  一段确定性的数据结构描述在一台主机上一个具体的协议。}
+  \label{fig:protocol}
 \end{figure}
 
 \section*{翻译对应的原文索引}
