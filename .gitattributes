@@ -1,1 +1,2 @@
 *.tex linguist-language=Python
+*.aux linguist-language=Python
