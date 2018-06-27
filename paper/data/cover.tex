@@ -68,7 +68,7 @@
 % 定义中英文摘要和关键字
 \begin{cabstract}
   网络漏洞扫描工具是一种用于搜索网络主机中漏洞的工具，它依赖于各种已知漏洞组成的漏洞库。
-  本文利用互联网设备搜索引擎，对其数据进行融合，然后和CVE信息进行比对，
+  本文利用互联网设备搜索引擎，对其数据进行融合，作为主机的威胁情报，然后和CVE信息进行比对，
   提出了一种新的检测网络主机漏洞的方法，弥补了扫描工具漏洞库更新不及时等不足，并实现了这样的一个系统，
   能够监测目标主机上可能存在的威胁，在出现威胁时及时通知用户。我们将在文中讨论本系统的设计与实现中的细节。
 \end{cabstract}
@@ -80,7 +80,7 @@
   Network vulnerability scanners are tools that scan the network to find vulnerabilities on computers. 
   The scanning depends on known vulnerability database. In this paper, 
   we present a new way to find vulnerabilities that uses Internet-connected devices search engines. 
-  It aggregates data from different Internet-connected devices search engines and compares them with CVE details. 
+  It aggregates data from different Internet-connected devices search engines as threats information and then compares them with CVE details. 
   It fixes the disadvantage of scanners that vulnerability database is not always up-to-date. 
   We also implement this system that can monitor computers and notifies users whenever new vulnerabilities are found. 
   In this paper, we will discuss the design and implementation details of the system.
